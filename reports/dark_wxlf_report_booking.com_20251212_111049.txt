@@ -1,0 +1,247 @@
+================================================================================
+DARK WXLF RECONNAISSANCE REPORT
+Program: booking.com
+Generated: 2025-12-12 11:10:49
+Report ID: 9a8246c1ce23
+================================================================================
+
+[EXECUTIVE SUMMARY]
+--------------------------------------------------------------------------------
+Total Assets Discovered: 20
+Total Open Ports: 59
+Critical CVEs: 0
+High CVEs: 0
+New Assets (since last scan): 0
+Changed Services: 0
+
+[ASSET INVENTORY]
+--------------------------------------------------------------------------------
+
+[1] https://admin.booking.com
+    Status: 200
+    Title: Booking.com
+    Technologies: aws, react, https-envoy, http-envoy
+    Open Ports: 2
+      - 80/http (venvoy)
+      - 443/https (venvoy)
+
+[2] https://a1.booking.com
+    Status: 403
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[3] https://affiliates.booking.com
+    Status: 200
+    Title: برنامج الشركاء التابعين من Booking.com - اكسب المال على موقعك الإلكتروني
+    Technologies: nginx, aws, https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[4] https://ams4gw2eps.booking.com
+    Status: 404
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[5] https://ams4gw2egp.booking.com
+    Status: 404
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[6] https://ams4gw2gp.booking.com
+    Status: 404
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[7] https://api-lhr4.booking.com
+    Status: 404
+    Title: Booking.com: 404 Not Found
+    Technologies: https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[8] https://api-ams4.booking.com
+    Status: 404
+    Title: Booking.com: 404 Not Found
+    Technologies: https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[9] https://agencywise.booking.com
+    Status: 403
+    Title: Just a moment...
+    Technologies: https-cloudflare, http-cloudflare, http-proxy-cloudflare
+    Open Ports: 4
+      - 80/http (vcloudflare)
+      - 443/https (vcloudflare)
+      - 8080/http-proxy (vcloudflare)
+      - 8443/https-alt (vNone)
+
+[10] https://assets.taxi.booking.com
+    Status: 403
+    Title: No Title
+    Technologies: https-AmazonS3, http-AmazonS3
+    Open Ports: 2
+      - 80/http (vAmazonS3)
+      - 443/https (vAmazonS3)
+
+[11] https://auth.dispatchapi.taxi.booking.com
+    Status: 403
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[12] https://auth.dispatchapi-sandbox.taxi.booking.com
+    Status: 200
+    Title: Signin
+    Technologies: django, aws, https-Server, laravel, http-Server
+    Open Ports: 2
+      - 80/http (vServer)
+      - 443/https (vServer)
+    Server: Server
+    X-Frame-Options: DENY
+
+[13] https://b1.booking.com
+    Status: 403
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[14] https://authorityportaluat.booking.com
+    Status: 200
+    Title: Public Authorities Activity Portal - Sign In
+    Technologies: ftp, http-nginx, nginx, https-nginx, spring, smtp, mysql
+    Open Ports: 19
+      - 21/ftp (vNone)
+      - 23/telnet (vNone)
+      - 25/smtp (vNone)
+      - 53/unknown (vNone)
+      - 80/http (vnginx)
+      - 110/pop3 (vNone)
+      - 111/unknown (vNone)
+      - 135/unknown (vNone)
+      - 139/unknown (vNone)
+      - 143/imap (vNone)
+    Server: nginx
+
+[15] https://blr3gw1gp.booking.com
+    Status: 404
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[16] https://blr3gw2gp.booking.com
+    Status: 404
+    Title: No Title
+    Open Ports: 2
+      - 80/http (vNone)
+      - 443/https (vNone)
+
+[17] https://blog.booking.com
+    Status: 200
+    Title: Booking.com Tech Blog
+    Technologies: wordpress, aws, https-envoy, http-envoy, react
+    Open Ports: 2
+      - 80/http (venvoy)
+      - 443/https (venvoy)
+
+[18] https://api.booking.com
+    Status: 404
+    Title: Booking.com: 404 Not Found
+    Technologies: https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[19] https://bookitbutton.booking.com
+    Status: 202
+    Title: 
+    Technologies: nginx, aws, https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[20] https://booking.com
+    Status: 202
+    Title: 
+    Technologies: nginx, aws, https-nginx, http-nginx
+    Open Ports: 2
+      - 80/http (vnginx)
+      - 443/https (vnginx)
+
+[TECHNOLOGY STACK SUMMARY]
+--------------------------------------------------------------------------------
+  https-nginx: 7 instance(s)
+  http-nginx: 7 instance(s)
+  aws: 6 instance(s)
+  nginx: 4 instance(s)
+  react: 2 instance(s)
+  https-envoy: 2 instance(s)
+  http-envoy: 2 instance(s)
+  https-cloudflare: 1 instance(s)
+  http-cloudflare: 1 instance(s)
+  http-proxy-cloudflare: 1 instance(s)
+  https-AmazonS3: 1 instance(s)
+  http-AmazonS3: 1 instance(s)
+  django: 1 instance(s)
+  https-Server: 1 instance(s)
+  laravel: 1 instance(s)
+  http-Server: 1 instance(s)
+  ftp: 1 instance(s)
+  spring: 1 instance(s)
+  smtp: 1 instance(s)
+  mysql: 1 instance(s)
+  wordpress: 1 instance(s)
+
+[CVE ANALYSIS]
+--------------------------------------------------------------------------------
+No relevant CVEs found.
+
+
+[ATTACK SURFACE SUMMARY]
+--------------------------------------------------------------------------------
+Exposed Services:
+  - http: 20 instance(s)
+  - https: 20 instance(s)
+  - unknown: 8 instance(s)
+  - http-proxy: 2 instance(s)
+  - https-alt: 2 instance(s)
+  - ftp: 1 instance(s)
+  - telnet: 1 instance(s)
+  - smtp: 1 instance(s)
+  - pop3: 1 instance(s)
+  - imap: 1 instance(s)
+  - mysql: 1 instance(s)
+  - rdp: 1 instance(s)
+
+[HIGH-VALUE TARGETS]
+--------------------------------------------------------------------------------
+
+https://authorityportaluat.booking.com (Score: 4)
+  - Admin/login interface
+  - Port 3306 open
+
+https://admin.booking.com (Score: 3)
+  - Admin/login interface
+
+[RECOMMENDATIONS]
+--------------------------------------------------------------------------------
+1. Secure exposed MYSQL instances (1 found)
+2. Implement security headers (missing on 19 assets)
+
+================================================================================
+END OF REPORT
+================================================================================
