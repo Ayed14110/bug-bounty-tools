@@ -73,8 +73,8 @@ except ImportError:
 VERSION = "2.0"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "reports", ".cache")
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "bug_bounty_findings.db")
+DB_PATH = os.environ.get("AYED_DB", os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "bug_bounty_findings.db"))
 
 log = logging.getLogger("ayed_recon")
 

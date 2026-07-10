@@ -48,10 +48,12 @@ def main():
     os.makedirs(reports, exist_ok=True)
     state_path = os.path.join(reports, f".monitor_state_{host}.json")
 
-    # run scan (skip live CVE to keep each cycle fast)
+    # run scan (skip live CVE to keep each cycle fast); use a dedicated,
+    # gitignored DB so monitor cycles never dirty the deliverable database.
+    env = dict(os.environ, AYED_DB=os.path.join(reports, "monitor.db"))
     subprocess.run([sys.executable, os.path.join(HERE, "ayed_recon.py"),
                     target, "--no-cve", "--outdir", reports],
-                   capture_output=True, text=True, timeout=150)
+                   capture_output=True, text=True, timeout=150, env=env)
 
     # newest json report for this host
     jsons = sorted(f for f in os.listdir(reports)
