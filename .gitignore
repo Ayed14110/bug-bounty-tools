@@ -1,2 +1,4 @@
 reports/monitor/
 reports/.monitor_state_*
+__pycache__/
+*.pyc
