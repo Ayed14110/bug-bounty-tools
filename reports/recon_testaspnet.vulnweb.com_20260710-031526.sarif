@@ -1,0 +1,685 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ayed_recon",
+          "version": "2.0",
+          "rules": [
+            {
+              "id": "OWASP-A05:2021",
+              "name": "Security Misconfiguration",
+              "shortDescription": {
+                "text": "A05:2021 Security Misconfiguration"
+              }
+            },
+            {
+              "id": "OWASP-A02:2021",
+              "name": "Cryptographic Failures",
+              "shortDescription": {
+                "text": "A02:2021 Cryptographic Failures"
+              }
+            },
+            {
+              "id": "OWASP-A06:2021",
+              "name": "Vulnerable & Outdated Components",
+              "shortDescription": {
+                "text": "A06:2021 Vulnerable & Outdated Components"
+              }
+            },
+            {
+              "id": "CVE-2007-0042",
+              "shortDescription": {
+                "text": "Interpretation conflict in ASP.NET in Microsoft .NET Framework 1.0, 1.1, and 2.0 for Windows 2000, XP, Server 2003, and "
+              }
+            },
+            {
+              "id": "CVE-2004-0200",
+              "shortDescription": {
+                "text": "Buffer overflow in the JPEG (JPG) parsing engine in the Microsoft Graphic Device Interface Plus (GDI+) component, GDIPlu"
+              }
+            },
+            {
+              "id": "CVE-2005-2127",
+              "shortDescription": {
+                "text": "Microsoft Internet Explorer 5.01, 5.5, and 6 allows remote attackers to cause a denial of service (application crash) an"
+              }
+            },
+            {
+              "id": "CVE-2012-0163",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 1.0 SP3, 1.1 SP1, 2.0 SP2, 3.5, 3.5.1, 4, and 4.5 does not properly validate function parameter"
+              }
+            },
+            {
+              "id": "CVE-2002-0369",
+              "shortDescription": {
+                "text": "Buffer overflow in ASP.NET Worker Process allows remote attackers to cause a denial of service (restart) and possibly ex"
+              }
+            },
+            {
+              "id": "CVE-2007-0041",
+              "shortDescription": {
+                "text": "The PE Loader service in Microsoft .NET Framework 1.0, 1.1, and 2.0 for Windows 2000, XP, Server 2003, and Vista allows "
+              }
+            },
+            {
+              "id": "CVE-2007-0043",
+              "shortDescription": {
+                "text": "The Just In Time (JIT) Compiler service in Microsoft .NET Framework 1.0, 1.1, and 2.0 for Windows 2000, XP, Server 2003,"
+              }
+            },
+            {
+              "id": "CVE-2009-2501",
+              "shortDescription": {
+                "text": "Heap-based buffer overflow in GDI+ in Microsoft Internet Explorer 6 SP1, Windows XP SP2 and SP3, Office XP SP3, Office 2"
+              }
+            },
+            {
+              "id": "CVE-2009-0091",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 2.0, 2.0 SP1, and 3.5 does not properly enforce a certain type-equality constraint in .NET veri"
+              }
+            },
+            {
+              "id": "CVE-2010-3332",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 1.1 SP1, 2.0 SP1 and SP2, 3.5, 3.5 SP1, 3.5.1, and 4.0, as used for ASP.NET in Microsoft Intern"
+              }
+            },
+            {
+              "id": "CVE-2010-1898",
+              "shortDescription": {
+                "text": "The Common Language Runtime (CLR) in Microsoft .NET Framework 2.0 SP1, 2.0 SP2, 3.5, 3.5 SP1, and 3.5.1, and Microsoft S"
+              }
+            },
+            {
+              "id": "CVE-2012-0015",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 2.0 SP2 and 3.5.1 does not properly calculate the length of an unspecified buffer, which allows"
+              }
+            },
+            {
+              "id": "CVE-2010-3958",
+              "shortDescription": {
+                "text": "The x86 JIT compiler in Microsoft .NET Framework 2.0 SP2, 3.5 SP1, 3.5.1, and 4.0 does not properly compile function cal"
+              }
+            },
+            {
+              "id": "CVE-2009-2500",
+              "shortDescription": {
+                "text": "Integer overflow in GDI+ in Microsoft Internet Explorer 6 SP1, Windows XP SP2 and SP3, Office XP SP3, Office 2003 SP3, 2"
+              }
+            },
+            {
+              "id": "CVE-2009-3126",
+              "shortDescription": {
+                "text": "Integer overflow in GDI+ in Microsoft Internet Explorer 6 SP1, Windows XP SP2 and SP3, Office XP SP3, Office 2003 SP3, 2"
+              }
+            },
+            {
+              "id": "CVE-2009-2497",
+              "shortDescription": {
+                "text": "The Common Language Runtime (CLR) in Microsoft .NET Framework 2.0, 2.0 SP1, 2.0 SP2, 3.5, and 3.5 SP1, and Silverlight 2"
+              }
+            },
+            {
+              "id": "CVE-2009-2503",
+              "shortDescription": {
+                "text": "GDI+ in Microsoft Internet Explorer 6 SP1, Windows XP SP2 and SP3, Windows Server 2003 SP2, Office XP SP3, Office 2003 S"
+              }
+            },
+            {
+              "id": "CVE-2009-0090",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 1.0 SP3, 1.1 SP1, and 2.0 SP1 does not properly validate .NET verifiable code, which allows rem"
+              }
+            },
+            {
+              "id": "CVE-2009-2504",
+              "shortDescription": {
+                "text": "Multiple integer overflows in unspecified APIs in GDI+ in Microsoft .NET Framework 1.1 SP1, .NET Framework 2.0 SP1 and S"
+              }
+            },
+            {
+              "id": "CVE-2009-2528",
+              "shortDescription": {
+                "text": "GDI+ in Microsoft Office XP SP3 does not properly handle malformed objects in Office Art Property Tables, which allows r"
+              }
+            },
+            {
+              "id": "CVE-2010-3228",
+              "shortDescription": {
+                "text": "The JIT compiler in Microsoft .NET Framework 4.0 on 64-bit platforms does not properly perform optimizations, which allo"
+              }
+            },
+            {
+              "id": "CVE-2011-0664",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 2.0 SP1 and SP2, 3.5 Gold and SP1, 3.5.1, and 4.0, and Silverlight 4 before 4.0.60531.0, does n"
+              }
+            },
+            {
+              "id": "CVE-2008-5100",
+              "shortDescription": {
+                "text": "The strong name (SN) implementation in Microsoft .NET Framework 2.0.50727 relies on the digital signature Public Key Tok"
+              }
+            },
+            {
+              "id": "CVE-2011-1253",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 1.0 SP3, 1.1 SP1, 2.0 SP2, 3.5.1, and 4, and Silverlight 4 before 4.0.60831, does not properly "
+              }
+            },
+            {
+              "id": "CVE-2012-0014",
+              "shortDescription": {
+                "text": "Microsoft .NET Framework 2.0 SP2, 3.5.1, and 4, and Silverlight 4 before 4.1.10111, does not properly restrict access to"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "OWASP-A05:2021",
+          "level": "warning",
+          "message": {
+            "text": "Missing headers (F): Strict-Transport-Security, Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-XSS-Protection"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OWASP-A05:2021",
+          "level": "warning",
+          "message": {
+            "text": "Cookie 'ASP.NET_SessionId' missing Secure/HttpOnly"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OWASP-A02:2021",
+          "level": "warning",
+          "message": {
+            "text": "Cleartext HTTP"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OWASP-A06:2021",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft IIS 8.5 version disclosed"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OWASP-A06:2021",
+          "level": "warning",
+          "message": {
+            "text": "ASP.NET Framework 2.0.50727 version disclosed"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "OWASP-A05:2021",
+          "level": "warning",
+          "message": {
+            "text": "Exposed sensitive path /robots.txt"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2007-0042",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2007-0042 risk=67.6 CVSS=7.8 EPSS=0.77716 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2004-0200",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2004-0200 risk=64.6 CVSS=9.3 EPSS=0.49024 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2005-2127",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2005-2127 risk=58.6 CVSS=7.5 EPSS=0.63665 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2012-0163",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2012-0163 risk=58.5 CVSS=9.3 EPSS=0.38251 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2002-0369",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2002-0369 risk=54.6 CVSS=10.0 EPSS=0.24346 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2007-0041",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2007-0041 risk=54.3 CVSS=9.3 EPSS=0.30666 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2007-0043",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2007-0043 risk=54.3 CVSS=9.3 EPSS=0.30666 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2501",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2501 risk=52.2 CVSS=9.3 EPSS=0.26824 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-0091",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-0091 risk=51.6 CVSS=9.3 EPSS=0.25811 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2010-3332",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2010-3332 risk=51.5 CVSS=6.4 EPSS=0.67481 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2010-1898",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2010-1898 risk=51.2 CVSS=9.3 EPSS=0.25033 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2012-0015",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2012-0015 risk=50.5 CVSS=9.3 EPSS=0.23778 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2010-3958",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2010-3958 risk=50.4 CVSS=9.3 EPSS=0.23593 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2500",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2500 risk=50.4 CVSS=9.3 EPSS=0.23647 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-3126",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-3126 risk=50.3 CVSS=9.3 EPSS=0.23461 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2497",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2497 risk=50.2 CVSS=9.3 EPSS=0.23254 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2503",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2503 risk=49.6 CVSS=9.3 EPSS=0.22205 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-0090",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-0090 risk=48.9 CVSS=9.3 EPSS=0.20982 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2504",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2504 risk=48.9 CVSS=9.3 EPSS=0.20982 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2009-2528",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2009-2528 risk=48.6 CVSS=9.3 EPSS=0.20452 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2010-3228",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2010-3228 risk=48.2 CVSS=9.3 EPSS=0.19751 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2011-0664",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2011-0664 risk=46.1 CVSS=9.3 EPSS=0.16006 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2008-5100",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2008-5100 risk=45.0 CVSS=10.0 EPSS=0.08367 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2011-1253",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2011-1253 risk=44.6 CVSS=9.3 EPSS=0.13241 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2012-0014",
+          "level": "warning",
+          "message": {
+            "text": "Microsoft ASP.NET: CVE-2012-0014 risk=44.4 CVSS=7.8 EPSS=0.2817 KEV=False"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "testaspnet.vulnweb.com"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

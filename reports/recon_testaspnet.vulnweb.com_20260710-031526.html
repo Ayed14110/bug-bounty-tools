@@ -1,0 +1,202 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recon Report — testaspnet.vulnweb.com</title><style>
+:root{color-scheme:light dark}
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:1000px;margin:0 auto;
+padding:2rem 1.2rem;line-height:1.55;background:#0d1117;color:#e6edf3}
+h1{border-bottom:3px solid #58a6ff;padding-bottom:.3em;color:#58a6ff}
+h2{border-bottom:1px solid #30363d;padding-bottom:.25em;margin-top:2em;color:#79c0ff}
+h3{color:#a5d6ff;margin-top:1.4em}
+table{border-collapse:collapse;width:100%;margin:1em 0;font-size:.85em;display:block;overflow-x:auto}
+th,td{border:1px solid #30363d;padding:.4em .6em;text-align:left}
+th{background:#161b22} tr:nth-child(even) td{background:#161b22}
+pre{background:#161b22;padding:1em;border-radius:8px;overflow-x:auto;border:1px solid #30363d}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.85em}
+a{color:#58a6ff;word-break:break-all} li{margin:.2em 0} hr{border:none;border-top:1px solid #30363d;margin:2em 0}
+</style></head><body>
+<h1>Advanced Reconnaissance &amp; Threat-Intelligence Report</h1>
+<br>
+<p><strong>Target:</strong> <code>testaspnet.vulnweb.com</code>  </p>
+<p><strong>Host:</strong> <code>testaspnet.vulnweb.com</code>  </p>
+<p><strong>Date (UTC):</strong> 20260710-031526  |  <strong>Assessor:</strong> ayedcyper  |  <strong>Engine:</strong> ayed_recon v2.0  </p>
+<p><strong>Authorization:</strong> Public test target (Acunetix vulnweb) — authorized.</p>
+<br>
+<h2>0. Risk Rating: <strong>CRITICAL</strong>  (score 85.6/100)</h2>
+<br>
+<li>Unique CVEs correlated: <strong>41</strong>  |  In CISA KEV (actively exploited): <strong>0</strong></li>
+<li>OWASP categories flagged: <strong>6</strong>  |  Open ports: <strong>2</strong></li>
+<li>Security-header grade: <strong>F</strong>  |  WAF: none detected</li>
+<br>
+<h2>1. Top Prioritized Vulnerabilities (risk = CVSS x EPSS, KEV override)</h2>
+<br>
+<table>
+<tr><th>Risk</th><th>CVE</th><th>Product</th><th>CVSS</th><th>EPSS</th><th>KEV</th><th>Published</th><th>Summary</th></tr>
+<tr><td>67.6</td><td>CVE-2007-0042</td><td>Microsoft ASP.NET</td><td>7.8</td><td>0.77716</td><td>-</td><td>2007-07-10</td><td>Interpretation conflict in ASP.NET in Microsoft .NET Framework 1.0, 1.</td></tr>
+<tr><td>64.6</td><td>CVE-2004-0200</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.49024</td><td>-</td><td>2004-09-28</td><td>Buffer overflow in the JPEG (JPG) parsing engine in the Microsoft Grap</td></tr>
+<tr><td>58.6</td><td>CVE-2005-2127</td><td>Microsoft ASP.NET</td><td>7.5</td><td>0.63665</td><td>-</td><td>2005-08-19</td><td>Microsoft Internet Explorer 5.01, 5.5, and 6 allows remote attackers t</td></tr>
+<tr><td>58.5</td><td>CVE-2012-0163</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.38251</td><td>-</td><td>2012-04-10</td><td>Microsoft .NET Framework 1.0 SP3, 1.1 SP1, 2.0 SP2, 3.5, 3.5.1, 4, and</td></tr>
+<tr><td>54.6</td><td>CVE-2002-0369</td><td>Microsoft ASP.NET</td><td>10.0</td><td>0.24346</td><td>-</td><td>2002-07-26</td><td>Buffer overflow in ASP.NET Worker Process allows remote attackers to c</td></tr>
+<tr><td>54.3</td><td>CVE-2007-0041</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.30666</td><td>-</td><td>2007-07-10</td><td>The PE Loader service in Microsoft .NET Framework 1.0, 1.1, and 2.0 fo</td></tr>
+<tr><td>54.3</td><td>CVE-2007-0043</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.30666</td><td>-</td><td>2007-07-10</td><td>The Just In Time (JIT) Compiler service in Microsoft .NET Framework 1.</td></tr>
+<tr><td>52.2</td><td>CVE-2009-2501</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.26824</td><td>-</td><td>2009-10-14</td><td>Heap-based buffer overflow in GDI+ in Microsoft Internet Explorer 6 SP</td></tr>
+<tr><td>51.6</td><td>CVE-2009-0091</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.25811</td><td>-</td><td>2009-10-14</td><td>Microsoft .NET Framework 2.0, 2.0 SP1, and 3.5 does not properly enfor</td></tr>
+<tr><td>51.5</td><td>CVE-2010-3332</td><td>Microsoft ASP.NET</td><td>6.4</td><td>0.67481</td><td>-</td><td>2010-09-22</td><td>Microsoft .NET Framework 1.1 SP1, 2.0 SP1 and SP2, 3.5, 3.5 SP1, 3.5.1</td></tr>
+<tr><td>51.2</td><td>CVE-2010-1898</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.25033</td><td>-</td><td>2010-08-11</td><td>The Common Language Runtime (CLR) in Microsoft .NET Framework 2.0 SP1,</td></tr>
+<tr><td>50.5</td><td>CVE-2012-0015</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.23778</td><td>-</td><td>2012-02-14</td><td>Microsoft .NET Framework 2.0 SP2 and 3.5.1 does not properly calculate</td></tr>
+<tr><td>50.4</td><td>CVE-2010-3958</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.23593</td><td>-</td><td>2011-04-13</td><td>The x86 JIT compiler in Microsoft .NET Framework 2.0 SP2, 3.5 SP1, 3.5</td></tr>
+<tr><td>50.4</td><td>CVE-2009-2500</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.23647</td><td>-</td><td>2009-10-14</td><td>Integer overflow in GDI+ in Microsoft Internet Explorer 6 SP1, Windows</td></tr>
+<tr><td>50.3</td><td>CVE-2009-3126</td><td>Microsoft ASP.NET</td><td>9.3</td><td>0.23461</td><td>-</td><td>2009-10-14</td><td>Integer overflow in GDI+ in Microsoft Internet Explorer 6 SP1, Windows</td></tr>
+</table>
+<br>
+<h2>2. Information Gathering</h2>
+<h3>2.1 DNS</h3>
+<li>A <code>44.238.29.244</code> -&gt; PTR <code>ec2-44-238-29-244.us-west-2.compute.amazonaws.com</code></li>
+<li>SPF: v=spf1 ~all</li>
+<li>DMARC: ❌ none</li>
+<br>
+<h3>2.2 Network</h3>
+<li>IP <code>44.238.29.244</code> — None (None) — None, None</li>
+<br>
+<h3>2.4 HTTP Fingerprint</h3>
+<li>Final URL: <code><a href="http://testaspnet.vulnweb.com/">http://testaspnet.vulnweb.com/</a></code>  |  Status: 200</li>
+<li>Title: acublog news</li>
+<li>Allowed methods: OPTIONS, TRACE, GET, HEAD, POST</li>
+<li>Favicon hash: {&#x27;md5&#x27;: &#x27;50c42a3edaaa2fa00445ac77f1b1a715&#x27;}</li>
+<br>
+<p><strong>Response headers:</strong></p>
+<pre><code>
+cache-control: private
+content-type: text/html; charset=utf-8
+server: Microsoft-IIS/8.5
+x-aspnet-version: 2.0.50727
+set-cookie: ASP.NET_SessionId=bwkbdvrgqlrvto5545oun4fx; path=/; HttpOnly
+x-powered-by: ASP.NET
+date: Fri, 10 Jul 2026 03:15:18 GMT
+content-length: 13917
+</code></pre>
+<br>
+<h3>2.5 Security Headers  (Grade F)</h3>
+<li>❌ Missing <code>Strict-Transport-Security</code></li>
+<li>❌ Missing <code>Content-Security-Policy</code></li>
+<li>❌ Missing <code>X-Frame-Options</code></li>
+<li>❌ Missing <code>X-Content-Type-Options</code></li>
+<li>❌ Missing <code>Referrer-Policy</code></li>
+<li>❌ Missing <code>Permissions-Policy</code></li>
+<li>❌ Missing <code>X-XSS-Protection</code></li>
+<br>
+<h3>2.6 Cookies</h3>
+<li><code>ASP.NET_SessionId</code> Secure=False HttpOnly=True SameSite=None</li>
+<br>
+<h3>2.7 Technologies</h3>
+<li><strong>Microsoft IIS</strong> 8.5 — <em>Server: Microsoft-IIS/8.5</em></li>
+<li><strong>Microsoft ASP.NET</strong>  — <em>X-Powered-By: ASP.NET</em></li>
+<li><strong>ASP.NET Framework</strong> 2.0.50727 — <em>X-AspNet-Version: 2.0.50727</em></li>
+<br>
+<h3>2.8 TLS / Certificate</h3>
+<li>Protocol: TLSv1.3 | Cipher: TLS<em>AES</em>256<em>GCM</em>SHA384</li>
+<li>Issuer: None</li>
+<li>Expires: None (days left ?, expired None)</li>
+<br>
+<h3>2.9 Sensitive File Exposure</h3>
+<li>⚠️ <code>/robots.txt</code> (HTTP 200, 13 bytes)</li>
+<br>
+<h2>3. OS Detection</h2>
+<li>Method: passive | Guess: <strong>Undetermined</strong> (low)</li>
+<br>
+<h2>4. Port / Service Scan</h2>
+<li>Scanner: socket(threaded)</li>
+<br>
+<table>
+<tr><th>Port</th><th>Service</th><th>Banner</th></tr>
+<tr><td>80</td><td>http</td><td>HTTP/1.1 426 Upgrade Required</td></tr>
+</table>
+<p>content-length: 16</p>
+<p>content-t |</p>
+<table>
+<tr><th>443</th><th>https</th><th></th></tr>
+</table>
+<br>
+<h2>5. CVE Correlation Detail (per product)</h2>
+<br>
+<h3>Microsoft IIS 8.5</h3>
+<li>Match method: <code>CPE cpe:2.3:a:microsoft:internet<em>information</em>services:8.5</code></li>
+<li>🔎 <a href="https://nvd.nist.gov/vuln/search/results?query=Microsoft%20IIS%208.5">NVD</a> · 💥 <a href="https://www.exploit-db.com/search?q=Microsoft%20IIS%208.5">Exploit-DB</a> · 📚 <a href="https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=Microsoft%20IIS%208.5">MITRE</a></li>
+<br>
+<table>
+<tr><th>CVE</th><th>Risk</th><th>CVSS</th><th>Sev</th><th>EPSS</th><th>KEV</th><th>Published</th></tr>
+<tr><td>CVE-2014-4078</td><td>25.9</td><td>5.1</td><td>MEDIUM</td><td>0.18011</td><td>-</td><td>2014-11-11</td></tr>
+</table>
+<br>
+<h3>Microsoft ASP.NET </h3>
+<li>Match method: <code>CPE cpe:2.3:a:microsoft:.net_framework (any version)</code></li>
+<li>🔎 <a href="https://nvd.nist.gov/vuln/search/results?query=Microsoft%20ASP.NET">NVD</a> · 💥 <a href="https://www.exploit-db.com/search?q=Microsoft%20ASP.NET">Exploit-DB</a> · 📚 <a href="https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=Microsoft%20ASP.NET">MITRE</a></li>
+<br>
+<table>
+<tr><th>CVE</th><th>Risk</th><th>CVSS</th><th>Sev</th><th>EPSS</th><th>KEV</th><th>Published</th></tr>
+<tr><td>CVE-2007-0042</td><td>67.6</td><td>7.8</td><td>HIGH</td><td>0.77716</td><td>-</td><td>2007-07-10</td></tr>
+<tr><td>CVE-2004-0200</td><td>64.6</td><td>9.3</td><td>HIGH</td><td>0.49024</td><td>-</td><td>2004-09-28</td></tr>
+<tr><td>CVE-2005-2127</td><td>58.6</td><td>7.5</td><td>HIGH</td><td>0.63665</td><td>-</td><td>2005-08-19</td></tr>
+<tr><td>CVE-2012-0163</td><td>58.5</td><td>9.3</td><td>HIGH</td><td>0.38251</td><td>-</td><td>2012-04-10</td></tr>
+<tr><td>CVE-2002-0369</td><td>54.6</td><td>10.0</td><td>HIGH</td><td>0.24346</td><td>-</td><td>2002-07-26</td></tr>
+<tr><td>CVE-2007-0041</td><td>54.3</td><td>9.3</td><td>HIGH</td><td>0.30666</td><td>-</td><td>2007-07-10</td></tr>
+</table>
+<br>
+<h3>ASP.NET Framework 2.0.50727</h3>
+<li>Match method: <code>CPE cpe:2.3:a:microsoft:.net_framework:2.0.50727</code></li>
+<li>🔎 <a href="https://nvd.nist.gov/vuln/search/results?query=ASP.NET%20Framework%202.0.50727">NVD</a> · 💥 <a href="https://www.exploit-db.com/search?q=ASP.NET%20Framework%202.0.50727">Exploit-DB</a> · 📚 <a href="https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=ASP.NET%20Framework%202.0.50727">MITRE</a></li>
+<br>
+<table>
+<tr><th>CVE</th><th>Risk</th><th>CVSS</th><th>Sev</th><th>EPSS</th><th>KEV</th><th>Published</th></tr>
+<tr><td>CVE-2008-5100</td><td>45.0</td><td>10.0</td><td>HIGH</td><td>0.08367</td><td>-</td><td>2008-11-17</td></tr>
+</table>
+<br>
+<h2>6. OWASP Top 10 Mapping</h2>
+<h3>6.1 Evidenced (passive)</h3>
+<table>
+<tr><th>OWASP</th><th>Category</th><th>Evidence</th></tr>
+<tr><td>A05:2021</td><td>Security Misconfiguration</td><td>Missing headers (F): Strict-Transport-Security, Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-XSS-Protection</td></tr>
+<tr><td>A05:2021</td><td>Security Misconfiguration</td><td>Cookie &amp;#x27;ASP.NET_SessionId&amp;#x27; missing Secure/HttpOnly</td></tr>
+<tr><td>A02:2021</td><td>Cryptographic Failures</td><td>Cleartext HTTP</td></tr>
+<tr><td>A06:2021</td><td>Vulnerable &amp; Outdated Components</td><td>Microsoft IIS 8.5 version disclosed</td></tr>
+<tr><td>A06:2021</td><td>Vulnerable &amp; Outdated Components</td><td>ASP.NET Framework 2.0.50727 version disclosed</td></tr>
+<tr><td>A05:2021</td><td>Security Misconfiguration</td><td>Exposed sensitive path /robots.txt</td></tr>
+</table>
+<br>
+<h3>6.2 Full Checklist</h3>
+<table>
+<tr><th>ID</th><th>Category</th><th>CWE</th></tr>
+<tr><td>A01:2021</td><td>Broken Access Control</td><td>CWE-200, CWE-284, CWE-639</td></tr>
+<tr><td>A02:2021</td><td>Cryptographic Failures</td><td>CWE-259, CWE-327, CWE-319</td></tr>
+<tr><td>A03:2021</td><td>Injection</td><td>CWE-79, CWE-89, CWE-77</td></tr>
+<tr><td>A04:2021</td><td>Insecure Design</td><td>CWE-209, CWE-256</td></tr>
+<tr><td>A05:2021</td><td>Security Misconfiguration</td><td>CWE-16, CWE-611</td></tr>
+<tr><td>A06:2021</td><td>Vulnerable &amp; Outdated Components</td><td>CWE-1104, CWE-937</td></tr>
+<tr><td>A07:2021</td><td>Identification &amp; Auth Failures</td><td>CWE-287, CWE-384</td></tr>
+<tr><td>A08:2021</td><td>Software &amp; Data Integrity Failures</td><td>CWE-502, CWE-829</td></tr>
+<tr><td>A09:2021</td><td>Logging &amp; Monitoring Failures</td><td>CWE-778, CWE-117</td></tr>
+<tr><td>A10:2021</td><td>Server-Side Request Forgery</td><td>CWE-918</td></tr>
+</table>
+<br>
+<h2>7. Google Hacking (GHDB) Dorks</h2>
+<pre><code>
+site:testaspnet.vulnweb.com inurl:admin
+site:testaspnet.vulnweb.com inurl:login
+site:testaspnet.vulnweb.com filetype:aspx
+site:testaspnet.vulnweb.com inurl:&quot;?id=&quot;
+site:testaspnet.vulnweb.com intitle:&quot;index of&quot;
+site:testaspnet.vulnweb.com ext:config OR ext:bak OR ext:old
+site:testaspnet.vulnweb.com &quot;sql syntax near&quot;
+site:testaspnet.vulnweb.com inurl:web.config
+</code></pre>
+<br>
+<h2>8. Recommendations</h2>
+<li>Add missing security headers (grade F → target A).</li>
+<li>Set Secure/HttpOnly/SameSite on all cookies.</li>
+<li>Suppress version banners and patch disclosed components.</li>
+<li>Enforce HTTPS + HSTS.</li>
+<li>Remove/deny access to exposed sensitive files.</li>
+<li>Manually validate injection points (SQLi/XSS) on this known-vulnerable target.</li>
+<br>
+<hr>
+<p><em>ayed</em>recon v2.0 — authorized testing only. Intel: NVD + CISA KEV + FIRST EPSS._</p>
+</body></html>
