@@ -2,7 +2,7 @@
 
 **Target:** `testaspnet.vulnweb.com`  
 **Host:** `testaspnet.vulnweb.com`  
-**Date (UTC):** 20260710-031526  |  **Assessor:** ayedcyper  |  **Engine:** ayed_recon v2.0  
+**Date (UTC):** 20260710-032725  |  **Assessor:** ayedcyper  |  **Engine:** ayed_recon v2.0  
 **Authorization:** Public test target (Acunetix vulnweb) — authorized.
 
 ## 0. Risk Rating: **CRITICAL**  (score 85.6/100)
@@ -52,9 +52,9 @@ cache-control: private
 content-type: text/html; charset=utf-8
 server: Microsoft-IIS/8.5
 x-aspnet-version: 2.0.50727
-set-cookie: ASP.NET_SessionId=bwkbdvrgqlrvto5545oun4fx; path=/; HttpOnly
+set-cookie: ASP.NET_SessionId=agwpt3qx05bi5ojb0vired55; path=/; HttpOnly
 x-powered-by: ASP.NET
-date: Fri, 10 Jul 2026 03:15:18 GMT
+date: Fri, 10 Jul 2026 03:27:10 GMT
 content-length: 13917
 ```
 
@@ -164,7 +164,46 @@ site:testaspnet.vulnweb.com "sql syntax near"
 site:testaspnet.vulnweb.com inurl:web.config
 ```
 
-## 8. Recommendations
+## 8. Deep Analysis  —  Assessment Grade **E**  |  Attack-Surface **8/100**
+- Latency: 155.9 ms | HTTP/1.1 | 13917 bytes | encoding: None
+
+### 8.1 Security-Header Deep Analysis
+- HSTS: present=False max-age=None includeSubDomains=None preload=None
+- CSP: present=False unsafe-inline=None unsafe-eval=None wildcard=None
+- Clickjacking protected: False | nosniff: False | Referrer-Policy strong: False
+- COOP=None COEP=None CORP=None
+- Information disclosure: {'server': 'Microsoft-IIS/8.5', 'x_powered_by': 'ASP.NET', 'x_aspnet_version': '2.0.50727'}
+
+### 8.2 Content & Attack Surface
+- Links: 60 | External domains: 1 | Forms: 1 | JS files: 0 | iframes: 0
+- Login form: False | Upload form: False | Emails found: 0
+  - Form `POST http://testaspnet.vulnweb.com/default.aspx` (5 inputs) NO-CSRF
+
+### 8.3 Certificate Deep Analysis
+- Key: RSA 2048-bit (weak=False) | Sig: sha256 (weak=False)
+- Subject CN: *.vulnweb.com | Issuer CN: Egress Gateway SDS Issuing CA (production) | self-signed: False | wildcard: False
+- Days left: 29 | expired: False | expiring-soon: True | serial: 17ca449e7ee837db7d73bd4dc4b7d266
+- SAN: testaspnet.vulnweb.com
+
+### 8.4 DNS Deep Analysis
+- DNSSEC: False | Wildcard DNS: False | Multi-A/LB: False | DKIM selectors: []
+- Verification tokens: 2
+
+### 8.5 CVE Intelligence
+- Network-exploitable: 24 | High-EPSS(>0.5): 3 | Exploit-likely: 3 | Avg age: 17.2 yrs
+- Attack-vector distribution: {'N': 24, 'L': 1}
+
+**Severity distribution:**
+```
+HIGH      | ############################## 24
+MEDIUM    | # 1
+```
+
+**Remediation priority matrix:**
+- Immediate (KEV/high-EPSS): CVE-2007-0042, CVE-2005-2127, CVE-2010-3332
+- High: CVE-2004-0200, CVE-2012-0163, CVE-2002-0369, CVE-2007-0041, CVE-2007-0043, CVE-2009-2501, CVE-2009-0091, CVE-2010-1898, CVE-2012-0015, CVE-2010-3958
+
+## 9. Recommendations
 1. Add missing security headers (grade F → target A).
 2. Set Secure/HttpOnly/SameSite on all cookies.
 3. Suppress version banners and patch disclosed components.

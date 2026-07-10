@@ -18,7 +18,7 @@ a{color:#58a6ff;word-break:break-all} li{margin:.2em 0} hr{border:none;border-to
 <br>
 <p><strong>Target:</strong> <code>testaspnet.vulnweb.com</code>  </p>
 <p><strong>Host:</strong> <code>testaspnet.vulnweb.com</code>  </p>
-<p><strong>Date (UTC):</strong> 20260710-031526  |  <strong>Assessor:</strong> ayedcyper  |  <strong>Engine:</strong> ayed_recon v2.0  </p>
+<p><strong>Date (UTC):</strong> 20260710-032725  |  <strong>Assessor:</strong> ayedcyper  |  <strong>Engine:</strong> ayed_recon v2.0  </p>
 <p><strong>Authorization:</strong> Public test target (Acunetix vulnweb) — authorized.</p>
 <br>
 <h2>0. Risk Rating: <strong>CRITICAL</strong>  (score 85.6/100)</h2>
@@ -69,9 +69,9 @@ cache-control: private
 content-type: text/html; charset=utf-8
 server: Microsoft-IIS/8.5
 x-aspnet-version: 2.0.50727
-set-cookie: ASP.NET_SessionId=bwkbdvrgqlrvto5545oun4fx; path=/; HttpOnly
+set-cookie: ASP.NET_SessionId=agwpt3qx05bi5ojb0vired55; path=/; HttpOnly
 x-powered-by: ASP.NET
-date: Fri, 10 Jul 2026 03:15:18 GMT
+date: Fri, 10 Jul 2026 03:27:10 GMT
 content-length: 13917
 </code></pre>
 <br>
@@ -189,7 +189,46 @@ site:testaspnet.vulnweb.com &quot;sql syntax near&quot;
 site:testaspnet.vulnweb.com inurl:web.config
 </code></pre>
 <br>
-<h2>8. Recommendations</h2>
+<h2>8. Deep Analysis  —  Assessment Grade <strong>E</strong>  |  Attack-Surface <strong>8/100</strong></h2>
+<li>Latency: 155.9 ms | HTTP/1.1 | 13917 bytes | encoding: None</li>
+<br>
+<h3>8.1 Security-Header Deep Analysis</h3>
+<li>HSTS: present=False max-age=None includeSubDomains=None preload=None</li>
+<li>CSP: present=False unsafe-inline=None unsafe-eval=None wildcard=None</li>
+<li>Clickjacking protected: False | nosniff: False | Referrer-Policy strong: False</li>
+<li>COOP=None COEP=None CORP=None</li>
+<li>Information disclosure: {&#x27;server&#x27;: &#x27;Microsoft-IIS/8.5&#x27;, &#x27;x<em>powered</em>by&#x27;: &#x27;ASP.NET&#x27;, &#x27;x<em>aspnet</em>version&#x27;: &#x27;2.0.50727&#x27;}</li>
+<br>
+<h3>8.2 Content &amp; Attack Surface</h3>
+<li>Links: 60 | External domains: 1 | Forms: 1 | JS files: 0 | iframes: 0</li>
+<li>Login form: False | Upload form: False | Emails found: 0</li>
+<p>  - Form <code>POST <a href="http://testaspnet.vulnweb.com/default.aspx">http://testaspnet.vulnweb.com/default.aspx</a></code> (5 inputs) NO-CSRF</p>
+<br>
+<h3>8.3 Certificate Deep Analysis</h3>
+<li>Key: RSA 2048-bit (weak=False) | Sig: sha256 (weak=False)</li>
+<li>Subject CN: *.vulnweb.com | Issuer CN: Egress Gateway SDS Issuing CA (production) | self-signed: False | wildcard: False</li>
+<li>Days left: 29 | expired: False | expiring-soon: True | serial: 17ca449e7ee837db7d73bd4dc4b7d266</li>
+<li>SAN: testaspnet.vulnweb.com</li>
+<br>
+<h3>8.4 DNS Deep Analysis</h3>
+<li>DNSSEC: False | Wildcard DNS: False | Multi-A/LB: False | DKIM selectors: []</li>
+<li>Verification tokens: 2</li>
+<br>
+<h3>8.5 CVE Intelligence</h3>
+<li>Network-exploitable: 24 | High-EPSS(&gt;0.5): 3 | Exploit-likely: 3 | Avg age: 17.2 yrs</li>
+<li>Attack-vector distribution: {&#x27;N&#x27;: 24, &#x27;L&#x27;: 1}</li>
+<br>
+<p><strong>Severity distribution:</strong></p>
+<pre><code>
+HIGH      | ############################## 24
+MEDIUM    | # 1
+</code></pre>
+<br>
+<p><strong>Remediation priority matrix:</strong></p>
+<li>Immediate (KEV/high-EPSS): CVE-2007-0042, CVE-2005-2127, CVE-2010-3332</li>
+<li>High: CVE-2004-0200, CVE-2012-0163, CVE-2002-0369, CVE-2007-0041, CVE-2007-0043, CVE-2009-2501, CVE-2009-0091, CVE-2010-1898, CVE-2012-0015, CVE-2010-3958</li>
+<br>
+<h2>9. Recommendations</h2>
 <li>Add missing security headers (grade F → target A).</li>
 <li>Set Secure/HttpOnly/SameSite on all cookies.</li>
 <li>Suppress version banners and patch disclosed components.</li>

@@ -9,8 +9,8 @@
     "MX": [],
     "NS": [],
     "TXT": [
-      "v=spf1 ~all",
-      "google-site-verification:0I73u7E64LVLWuS-nT9ssWHaHOI36n65prWVTGJklFo"
+      "google-site-verification:0I73u7E64LVLWuS-nT9ssWHaHOI36n65prWVTGJklFo",
+      "v=spf1 ~all"
     ],
     "CAA": [],
     "reverse": {
@@ -33,9 +33,9 @@
       "content-type": "text/html; charset=utf-8",
       "server": "Microsoft-IIS/8.5",
       "x-aspnet-version": "2.0.50727",
-      "set-cookie": "ASP.NET_SessionId=bwkbdvrgqlrvto5545oun4fx; path=/; HttpOnly",
+      "set-cookie": "ASP.NET_SessionId=agwpt3qx05bi5ojb0vired55; path=/; HttpOnly",
       "x-powered-by": "ASP.NET",
-      "date": "Fri, 10 Jul 2026 03:15:18 GMT",
+      "date": "Fri, 10 Jul 2026 03:27:10 GMT",
       "content-length": "13917"
     },
     "redirect_chain": [
@@ -109,7 +109,7 @@
       {
         "port": 80,
         "service": "http",
-        "banner": "HTTP/1.1 426 Upgrade Required\r\ncontent-length: 16\r\ncontent-type: text/plain\r\ndate: Fri, 10 Jul 2026 03:15:24 GMT\r\nconnec"
+        "banner": "HTTP/1.1 426 Upgrade Required\r\ncontent-length: 16\r\ncontent-type: text/plain\r\ndate: Fri, 10 Jul 2026 03:27:17 GMT\r\nconnec"
       },
       {
         "port": 443,
@@ -982,6 +982,686 @@
     "site:testaspnet.vulnweb.com \"sql syntax near\"",
     "site:testaspnet.vulnweb.com inurl:web.config"
   ],
+  "deep": {
+    "headers": {
+      "hsts": {
+        "present": false
+      },
+      "csp": {
+        "present": false
+      },
+      "x_frame_options": {
+        "value": null,
+        "clickjacking_protected": false
+      },
+      "nosniff": false,
+      "referrer_policy": {
+        "value": null,
+        "strong": false
+      },
+      "permissions_policy": {
+        "present": false,
+        "features": []
+      },
+      "coop": null,
+      "coep": null,
+      "corp": null,
+      "cache_control": {
+        "value": "private",
+        "prevents_caching": true
+      },
+      "disclosure": {
+        "server": "Microsoft-IIS/8.5",
+        "x_powered_by": "ASP.NET",
+        "x_aspnet_version": "2.0.50727",
+        "x_aspnetmvc_version": null,
+        "via": null,
+        "x_generator": null
+      }
+    },
+    "cookies": {
+      "cookies": [
+        {
+          "name": "ASP.NET_SessionId",
+          "secure": false,
+          "httponly": true,
+          "samesite": null,
+          "prefix_secure": false,
+          "prefix_host": false,
+          "session_cookie": true
+        }
+      ],
+      "weak_session_cookies": [
+        "ASP.NET_SessionId"
+      ]
+    },
+    "html": {
+      "link_count": 60,
+      "external_domains": [
+        "www.acunetix.com"
+      ],
+      "emails": [],
+      "js_files": [],
+      "js_count": 0,
+      "css_files": [
+        "http://testaspnet.vulnweb.com/styles.css"
+      ],
+      "forms": [
+        {
+          "action": "http://testaspnet.vulnweb.com/default.aspx",
+          "method": "post",
+          "inputs": 5,
+          "login": false,
+          "upload": false,
+          "csrf_token": false,
+          "password_autocomplete_on": false
+        }
+      ],
+      "has_login_form": false,
+      "has_upload_form": false,
+      "hidden_inputs": [
+        "__EVENTTARGET",
+        "__EVENTARGUMENT",
+        "__VIEWSTATE",
+        "__VIEWSTATEGENERATOR",
+        "__EVENTVALIDATION"
+      ],
+      "html_comment_count": 0,
+      "interesting_comments": [],
+      "inline_script_count": 1,
+      "meta_count": 5,
+      "open_graph": {},
+      "canonical": null,
+      "robots_meta": null,
+      "mixed_content": [],
+      "iframe_count": 0,
+      "iframes": [],
+      "api_endpoints": [],
+      "social_links": [
+        "www.acunetix.com"
+      ]
+    },
+    "dns": {
+      "dnssec": false,
+      "wildcard_dns": false,
+      "cname_chain": [],
+      "dkim_selectors": [],
+      "txt_records": [
+        "google-site-verification:0I73u7E64LVLWuS-nT9ssWHaHOI36n65prWVTGJklFo",
+        "v=spf1 ~all"
+      ],
+      "verification_tokens": [
+        "google-site-verification:0I73u7E64LVLWuS-nT9ssWHaHOI36n65prWVTGJklFo",
+        "v=spf1 ~all"
+      ],
+      "mx": [],
+      "caa": [],
+      "caa_restricted": false,
+      "multi_a": false,
+      "a_count": 1
+    },
+    "certificate": {
+      "key_type": "RSA",
+      "key_size": 2048,
+      "weak_key": false,
+      "sig_algorithm": "sha256",
+      "weak_signature": false,
+      "serial": "17ca449e7ee837db7d73bd4dc4b7d266",
+      "self_signed": false,
+      "san": [
+        "testaspnet.vulnweb.com"
+      ],
+      "wildcard_cert": false,
+      "valid_days_total": 30,
+      "days_left": 29,
+      "expired": false,
+      "expiring_soon": true,
+      "version": "v3",
+      "is_ca": null,
+      "issuer_cn": "Egress Gateway SDS Issuing CA (production)",
+      "subject_cn": "*.vulnweb.com"
+    },
+    "cve_analysis": {
+      "attack_vector_distribution": {
+        "N": 24,
+        "L": 1
+      },
+      "cwe_frequency": {},
+      "avg_age_years": 17.2,
+      "network_exploitable": 24,
+      "high_epss_count": 3,
+      "exploit_likely_count": 3,
+      "severity_distribution": {
+        "HIGH": 24,
+        "MEDIUM": 1
+      },
+      "per_cve": [
+        {
+          "id": "CVE-2007-0042",
+          "product": "Microsoft ASP.NET",
+          "cvss": 7.8,
+          "epss": 0.77716,
+          "kev": false,
+          "risk": 67.6,
+          "age_years": 19,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "confidentiality": "C",
+            "integrity": "N",
+            "availability": "N"
+          },
+          "patch_priority": 6.6,
+          "exploit_likely": true,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2007-0042"
+        },
+        {
+          "id": "CVE-2004-0200",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.49024,
+          "kev": false,
+          "risk": 64.6,
+          "age_years": 22,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 6.0,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2004-0200"
+        },
+        {
+          "id": "CVE-2005-2127",
+          "product": "Microsoft ASP.NET",
+          "cvss": 7.5,
+          "epss": 0.63665,
+          "kev": false,
+          "risk": 58.6,
+          "age_years": 21,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "confidentiality": "P",
+            "integrity": "P",
+            "availability": "P"
+          },
+          "patch_priority": 5.6,
+          "exploit_likely": true,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2005-2127"
+        },
+        {
+          "id": "CVE-2012-0163",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.38251,
+          "kev": false,
+          "risk": 58.5,
+          "age_years": 14,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 5.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2012-0163"
+        },
+        {
+          "id": "CVE-2002-0369",
+          "product": "Microsoft ASP.NET",
+          "cvss": 10.0,
+          "epss": 0.24346,
+          "kev": false,
+          "risk": 54.6,
+          "age_years": 24,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.7,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2002-0369"
+        },
+        {
+          "id": "CVE-2007-0041",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.30666,
+          "kev": false,
+          "risk": 54.3,
+          "age_years": 19,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.8,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2007-0041"
+        },
+        {
+          "id": "CVE-2007-0043",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.30666,
+          "kev": false,
+          "risk": 54.3,
+          "age_years": 19,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.8,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2007-0043"
+        },
+        {
+          "id": "CVE-2009-2501",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.26824,
+          "kev": false,
+          "risk": 52.2,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.5,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2501"
+        },
+        {
+          "id": "CVE-2009-0091",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.25811,
+          "kev": false,
+          "risk": 51.6,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.5,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-0091"
+        },
+        {
+          "id": "CVE-2010-3332",
+          "product": "Microsoft ASP.NET",
+          "cvss": 6.4,
+          "epss": 0.67481,
+          "kev": false,
+          "risk": 51.5,
+          "age_years": 16,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "confidentiality": "P",
+            "integrity": "P",
+            "availability": "N"
+          },
+          "patch_priority": 4.9,
+          "exploit_likely": true,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2010-3332"
+        },
+        {
+          "id": "CVE-2010-1898",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.25033,
+          "kev": false,
+          "risk": 51.2,
+          "age_years": 16,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.4,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2010-1898"
+        },
+        {
+          "id": "CVE-2012-0015",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.23778,
+          "kev": false,
+          "risk": 50.5,
+          "age_years": 14,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2012-0015"
+        },
+        {
+          "id": "CVE-2010-3958",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.23593,
+          "kev": false,
+          "risk": 50.4,
+          "age_years": 15,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2010-3958"
+        },
+        {
+          "id": "CVE-2009-2500",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.23647,
+          "kev": false,
+          "risk": 50.4,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2500"
+        },
+        {
+          "id": "CVE-2009-3126",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.23461,
+          "kev": false,
+          "risk": 50.3,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-3126"
+        },
+        {
+          "id": "CVE-2009-2497",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.23254,
+          "kev": false,
+          "risk": 50.2,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.3,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2497"
+        },
+        {
+          "id": "CVE-2009-2503",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.22205,
+          "kev": false,
+          "risk": 49.6,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.2,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2503"
+        },
+        {
+          "id": "CVE-2009-0090",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.20982,
+          "kev": false,
+          "risk": 48.9,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.2,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-0090"
+        },
+        {
+          "id": "CVE-2009-2504",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.20982,
+          "kev": false,
+          "risk": 48.9,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.2,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2504"
+        },
+        {
+          "id": "CVE-2009-2528",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.20452,
+          "kev": false,
+          "risk": 48.6,
+          "age_years": 17,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.1,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2009-2528"
+        },
+        {
+          "id": "CVE-2010-3228",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.19751,
+          "kev": false,
+          "risk": 48.2,
+          "age_years": 16,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 4.1,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2010-3228"
+        },
+        {
+          "id": "CVE-2011-0664",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.16006,
+          "kev": false,
+          "risk": 46.1,
+          "age_years": 15,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 3.8,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2011-0664"
+        },
+        {
+          "id": "CVE-2008-5100",
+          "product": "Microsoft ASP.NET",
+          "cvss": 10.0,
+          "epss": 0.08367,
+          "kev": false,
+          "risk": 45.0,
+          "age_years": 18,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 3.6,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2008-5100"
+        },
+        {
+          "id": "CVE-2011-1253",
+          "product": "Microsoft ASP.NET",
+          "cvss": 9.3,
+          "epss": 0.13241,
+          "kev": false,
+          "risk": 44.6,
+          "age_years": 15,
+          "cvss_components": {
+            "attack_vector": "N",
+            "attack_complexity": "M",
+            "confidentiality": "C",
+            "integrity": "C",
+            "availability": "C"
+          },
+          "patch_priority": 3.7,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2011-1253"
+        },
+        {
+          "id": "CVE-2012-0014",
+          "product": "Microsoft ASP.NET",
+          "cvss": 7.8,
+          "epss": 0.2817,
+          "kev": false,
+          "risk": 44.4,
+          "age_years": 14,
+          "cvss_components": {
+            "attack_vector": "L",
+            "attack_complexity": "L",
+            "priv_required": "N",
+            "user_interaction": "R",
+            "scope": "U",
+            "confidentiality": "H",
+            "integrity": "H",
+            "availability": "H"
+          },
+          "patch_priority": 3.9,
+          "exploit_likely": false,
+          "advisory": "https://nvd.nist.gov/vuln/detail/CVE-2012-0014"
+        }
+      ]
+    },
+    "metrics": {
+      "latency_ms": 155.9,
+      "http_version": "HTTP/1.1",
+      "content_length": 13917,
+      "content_encoding": null,
+      "content_type": "text/html; charset=utf-8",
+      "compressed": false
+    },
+    "attack_surface_score": 8,
+    "severity_chart": "HIGH      | ############################## 24\nMEDIUM    | # 1",
+    "remediation_matrix": {
+      "Immediate (KEV/high-EPSS)": [
+        "CVE-2007-0042",
+        "CVE-2005-2127",
+        "CVE-2010-3332"
+      ],
+      "High": [
+        "CVE-2004-0200",
+        "CVE-2012-0163",
+        "CVE-2002-0369",
+        "CVE-2007-0041",
+        "CVE-2007-0043",
+        "CVE-2009-2501",
+        "CVE-2009-0091",
+        "CVE-2010-1898",
+        "CVE-2012-0015",
+        "CVE-2010-3958",
+        "CVE-2009-2500",
+        "CVE-2009-3126",
+        "CVE-2009-2497",
+        "CVE-2009-2503",
+        "CVE-2009-0090",
+        "CVE-2009-2504",
+        "CVE-2009-2528",
+        "CVE-2010-3228",
+        "CVE-2011-0664",
+        "CVE-2008-5100",
+        "CVE-2011-1253",
+        "CVE-2012-0014"
+      ]
+    }
+  },
+  "assessment_grade": {
+    "grade": "E",
+    "penalty_points": 8
+  },
   "rating": {
     "score": 85.6,
     "rating": "CRITICAL"

@@ -1,1 +1,0 @@
-[{"id": "CVE-2008-5100", "published": "2008-11-17", "score": 10.0, "severity": "HIGH", "vector": "AV:N/AC:L/Au:N/C:C/I:C/A:C", "summary": "The strong name (SN) implementation in Microsoft .NET Framework 2.0.50727 relies on the digital signature Public Key Token embedded in the pathname of a DLL file instead of the digital signature of this file itself, which makes it easier fo"}]

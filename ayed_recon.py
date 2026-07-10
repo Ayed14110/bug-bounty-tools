@@ -70,6 +70,8 @@ try:
 except ImportError:
     MMH3_OK = False
 
+import recon_analyzers as ra     # 82 advanced analyzers (#41-#122)
+
 VERSION = "2.0"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "reports", ".cache")
@@ -446,14 +448,18 @@ def favicon_hash(session, base_url):
 
 
 def http_fingerprint(session, url):
+    """Returns (out, response). response is None on failure."""
     out = {"url": url, "reachable": False}
     if not session:
-        out["error"] = "requests unavailable"; return out
+        out["error"] = "requests unavailable"; return out, None
     try:
+        t0 = time.time()
         r = session.get(url, timeout=15, allow_redirects=True)
+        out["_elapsed"] = time.time() - t0
     except Exception as e:
-        out["error"] = str(e); return out
+        out["error"] = str(e); return out, None
 
+    out["_body"] = r.text or ""          # consumed by deep analyzers, stripped pre-serialize
     out.update(reachable=True, status_code=r.status_code, final_url=r.url,
                headers=dict(r.headers),
                redirect_chain=[h.url for h in r.history] + [r.url])
@@ -518,7 +524,7 @@ def http_fingerprint(session, url):
                        "wildcard": acao == "*"}
     except Exception:
         out["cors"] = None
-    return out
+    return out, r
 
 
 def probe_sensitive(session, base_url):
@@ -837,8 +843,16 @@ def generate_report(data, outdir):
     md = _markdown(data, ts)
     with open(stub + ".md", "w") as f: f.write(md)
     with open(stub + ".html", "w") as f: f.write(_html(data, md))
-    with open(stub + ".json", "w") as f: json.dump(data, f, indent=2, default=str)
     with open(stub + ".sarif", "w") as f: json.dump(build_sarif(data), f, indent=2)
+    # feature #118 : CSV export of prioritized CVEs
+    csv_text = data.get("deep", {}).get("cve_csv", "")
+    if csv_text:
+        with open(stub + ".csv", "w") as f: f.write(csv_text)
+    # JSON: drop the (large) embedded CSV string to keep it clean
+    serial = dict(data)
+    if serial.get("deep"):
+        serial["deep"] = {k: v for k, v in serial["deep"].items() if k != "cve_csv"}
+    with open(stub + ".json", "w") as f: json.dump(serial, f, indent=2, default=str)
     return stub + ".md", stub + ".html", stub + ".json", stub + ".sarif"
 
 
@@ -985,7 +999,90 @@ def _markdown(d, ts):
     for dork in d["ghdb"]: A(dork)
     A("```")
 
-    A("\n## 8. Recommendations")
+    # ---- Deep analysis (features #41-#122) ----
+    deep = d.get("deep", {})
+    if deep:
+        g = d.get("assessment_grade", {})
+        A(f"\n## 8. Deep Analysis  —  Assessment Grade **{g.get('grade')}**  |  "
+          f"Attack-Surface **{deep.get('attack_surface_score')}/100**")
+        met = deep.get("metrics", {})
+        A(f"- Latency: {met.get('latency_ms')} ms | {met.get('http_version')} | "
+          f"{met.get('content_length')} bytes | encoding: {met.get('content_encoding')}")
+
+        hd = deep.get("headers", {})
+        A("\n### 8.1 Security-Header Deep Analysis")
+        hsts = hd.get("hsts", {})
+        A(f"- HSTS: present={hsts.get('present')} max-age={hsts.get('max_age')} "
+          f"includeSubDomains={hsts.get('include_subdomains')} preload={hsts.get('preload')}")
+        csp = hd.get("csp", {})
+        A(f"- CSP: present={csp.get('present')} unsafe-inline={csp.get('unsafe_inline')} "
+          f"unsafe-eval={csp.get('unsafe_eval')} wildcard={csp.get('wildcard_source')}")
+        A(f"- Clickjacking protected: {hd.get('x_frame_options',{}).get('clickjacking_protected')} | "
+          f"nosniff: {hd.get('nosniff')} | Referrer-Policy strong: {hd.get('referrer_policy',{}).get('strong')}")
+        A(f"- COOP={hd.get('coop')} COEP={hd.get('coep')} CORP={hd.get('corp')}")
+        disc = hd.get("disclosure", {})
+        leaks = {k: v for k, v in disc.items() if v}
+        if leaks: A(f"- Information disclosure: {leaks}")
+
+        ha = deep.get("html", {})
+        A("\n### 8.2 Content & Attack Surface")
+        A(f"- Links: {ha.get('link_count')} | External domains: {len(ha.get('external_domains',[]))} | "
+          f"Forms: {len(ha.get('forms',[]))} | JS files: {ha.get('js_count')} | iframes: {ha.get('iframe_count')}")
+        A(f"- Login form: {ha.get('has_login_form')} | Upload form: {ha.get('has_upload_form')} | "
+          f"Emails found: {len(ha.get('emails',[]))}")
+        if ha.get("api_endpoints"):
+            A(f"- API endpoints in JS: {', '.join(ha['api_endpoints'][:15])}")
+        if ha.get("mixed_content"):
+            A(f"- ⚠️ Mixed content ({len(ha['mixed_content'])}): {', '.join(ha['mixed_content'][:5])}")
+        if ha.get("interesting_comments"):
+            A(f"- ⚠️ Interesting HTML comments: {ha['interesting_comments'][:5]}")
+        for f in ha.get("forms", []):
+            flags = []
+            if f.get("login"): flags.append("login")
+            if f.get("upload"): flags.append("upload")
+            if not f.get("csrf_token"): flags.append("NO-CSRF")
+            if f.get("password_autocomplete_on"): flags.append("pw-autocomplete-on")
+            A(f"  - Form `{f['method'].upper()} {f['action']}` ({f['inputs']} inputs) {' '.join(flags)}")
+
+        cert = deep.get("certificate", {})
+        if not cert.get("error"):
+            A("\n### 8.3 Certificate Deep Analysis")
+            A(f"- Key: {cert.get('key_type')} {cert.get('key_size')}-bit (weak={cert.get('weak_key')}) | "
+              f"Sig: {cert.get('sig_algorithm')} (weak={cert.get('weak_signature')})")
+            A(f"- Subject CN: {cert.get('subject_cn')} | Issuer CN: {cert.get('issuer_cn')} | "
+              f"self-signed: {cert.get('self_signed')} | wildcard: {cert.get('wildcard_cert')}")
+            A(f"- Days left: {cert.get('days_left')} | expired: {cert.get('expired')} | "
+              f"expiring-soon: {cert.get('expiring_soon')} | serial: {cert.get('serial')}")
+            if cert.get("san"): A(f"- SAN: {', '.join(cert['san'][:12])}")
+
+        dn = deep.get("dns", {})
+        if dn:
+            A("\n### 8.4 DNS Deep Analysis")
+            A(f"- DNSSEC: {dn.get('dnssec')} | Wildcard DNS: {dn.get('wildcard_dns')} | "
+              f"Multi-A/LB: {dn.get('multi_a')} | DKIM selectors: {dn.get('dkim_selectors')}")
+            if dn.get("mx"): A(f"- MX: {', '.join(m['host'] for m in dn['mx'][:5])}")
+            if dn.get("caa"): A(f"- CAA (restricted issuance): {dn.get('caa')}")
+            if dn.get("verification_tokens"):
+                A(f"- Verification tokens: {len(dn['verification_tokens'])}")
+
+        cvea = deep.get("cve_analysis", {})
+        if cvea.get("per_cve"):
+            A("\n### 8.5 CVE Intelligence")
+            A(f"- Network-exploitable: {cvea.get('network_exploitable')} | "
+              f"High-EPSS(>0.5): {cvea.get('high_epss_count')} | "
+              f"Exploit-likely: {cvea.get('exploit_likely_count')} | "
+              f"Avg age: {cvea.get('avg_age_years')} yrs")
+            if cvea.get("cwe_frequency"): A(f"- Top CWEs: {cvea['cwe_frequency']}")
+            A(f"- Attack-vector distribution: {cvea.get('attack_vector_distribution')}")
+            A("\n**Severity distribution:**\n```")
+            A(deep.get("severity_chart", "")); A("```")
+            rm = deep.get("remediation_matrix", {})
+            if rm:
+                A("\n**Remediation priority matrix:**")
+                for band, ids in rm.items():
+                    A(f"- {band}: {', '.join(ids[:10])}")
+
+    A("\n## 9. Recommendations")
     recs = []
     sh = fp.get("security_headers", {})
     if sh.get("missing"): recs.append(f"Add missing security headers (grade {sh.get('grade')} → target A).")
@@ -1090,7 +1187,7 @@ def assess(target, args, session):
         good(f"{len(subs)} subdomains from CT logs")
 
     sect("3. HTTP FINGERPRINT")
-    fp = http_fingerprint(session, url)
+    fp, response = http_fingerprint(session, url)
     if fp.get("reachable"):
         good(f"HTTP {fp['status_code']} · {fp.get('title')} · grade {fp['security_headers']['grade']}")
         if fp.get("waf"): warn(f"WAF: {', '.join(fp['waf'])}")
@@ -1142,11 +1239,35 @@ def assess(target, args, session):
     of = owasp_flags(fp, tls, sensitive)
     for cat, name, ev in of: warn(f"{cat} {ev}")
 
+    sect("10. DEEP ANALYSIS (82 features #41-#122)")
+    deep = ra.run_all({
+        "headers": fp.get("headers"), "cookies": fp.get("cookies"),
+        "body": fp.pop("_body", ""), "base_url": fp.get("final_url", url),
+        "host": host, "session": session, "a_records": dns.get("A"),
+        "top_cves": cve_summary.get("top"), "ports": ports,
+        "response": response, "elapsed": fp.pop("_elapsed", 0)})
+    grade = ra.overall_grade(deep["headers"], tls, deep["certificate"],
+                             len(of), cve_summary.get("kev_count", 0))
+    good(f"Assessment grade: {grade['grade']} | attack-surface: {deep['attack_surface_score']}/100 "
+         f"| latency: {deep['metrics'].get('latency_ms')}ms | {deep['metrics'].get('http_version')}")
+    ha = deep["html"]
+    info(f"links={ha['link_count']} forms={len(ha['forms'])} js={ha['js_count']} "
+         f"emails={len(ha['emails'])} api_eps={len(ha['api_endpoints'])} "
+         f"ext_domains={len(ha['external_domains'])} mixed={len(ha['mixed_content'])}")
+    cert = deep["certificate"]
+    if not cert.get("error"):
+        info(f"cert: {cert.get('key_type')}-{cert.get('key_size')} {cert.get('sig_algorithm')} "
+             f"days_left={cert.get('days_left')} self_signed={cert.get('self_signed')} "
+             f"weak_sig={cert.get('weak_signature')}")
+    if deep["cookies"]["weak_session_cookies"]:
+        warn(f"weak session cookies: {deep['cookies']['weak_session_cookies']}")
+
     data = {"host": host, "target": target, "dns": dns, "asn": asn,
             "subdomains": subs, "http": fp, "favicon": favicon,
             "sensitive": sensitive, "tls": tls, "ports": ports, "os": osd,
             "wayback": wayback, "cve": correlation, "cve_summary": cve_summary,
-            "owasp_flags": of, "ghdb": ghdb_dorks(host)}
+            "owasp_flags": of, "ghdb": ghdb_dorks(host),
+            "deep": deep, "assessment_grade": grade}
     data["rating"] = target_rating(cve_summary, of, fp)
     good(f"RISK RATING: {data['rating']['rating']} ({data['rating']['score']}/100)")
     return data

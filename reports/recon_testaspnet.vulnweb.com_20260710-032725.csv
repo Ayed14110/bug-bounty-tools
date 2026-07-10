@@ -1,0 +1,26 @@
+cve,product,cvss,epss,kev,risk,patch_priority,age_years,exploit_likely,advisory
+CVE-2007-0042,Microsoft ASP.NET,7.8,0.77716,False,67.6,6.6,19,True,https://nvd.nist.gov/vuln/detail/CVE-2007-0042
+CVE-2004-0200,Microsoft ASP.NET,9.3,0.49024,False,64.6,6.0,22,False,https://nvd.nist.gov/vuln/detail/CVE-2004-0200
+CVE-2005-2127,Microsoft ASP.NET,7.5,0.63665,False,58.6,5.6,21,True,https://nvd.nist.gov/vuln/detail/CVE-2005-2127
+CVE-2012-0163,Microsoft ASP.NET,9.3,0.38251,False,58.5,5.3,14,False,https://nvd.nist.gov/vuln/detail/CVE-2012-0163
+CVE-2002-0369,Microsoft ASP.NET,10.0,0.24346,False,54.6,4.7,24,False,https://nvd.nist.gov/vuln/detail/CVE-2002-0369
+CVE-2007-0041,Microsoft ASP.NET,9.3,0.30666,False,54.3,4.8,19,False,https://nvd.nist.gov/vuln/detail/CVE-2007-0041
+CVE-2007-0043,Microsoft ASP.NET,9.3,0.30666,False,54.3,4.8,19,False,https://nvd.nist.gov/vuln/detail/CVE-2007-0043
+CVE-2009-2501,Microsoft ASP.NET,9.3,0.26824,False,52.2,4.5,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2501
+CVE-2009-0091,Microsoft ASP.NET,9.3,0.25811,False,51.6,4.5,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-0091
+CVE-2010-3332,Microsoft ASP.NET,6.4,0.67481,False,51.5,4.9,16,True,https://nvd.nist.gov/vuln/detail/CVE-2010-3332
+CVE-2010-1898,Microsoft ASP.NET,9.3,0.25033,False,51.2,4.4,16,False,https://nvd.nist.gov/vuln/detail/CVE-2010-1898
+CVE-2012-0015,Microsoft ASP.NET,9.3,0.23778,False,50.5,4.3,14,False,https://nvd.nist.gov/vuln/detail/CVE-2012-0015
+CVE-2010-3958,Microsoft ASP.NET,9.3,0.23593,False,50.4,4.3,15,False,https://nvd.nist.gov/vuln/detail/CVE-2010-3958
+CVE-2009-2500,Microsoft ASP.NET,9.3,0.23647,False,50.4,4.3,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2500
+CVE-2009-3126,Microsoft ASP.NET,9.3,0.23461,False,50.3,4.3,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-3126
+CVE-2009-2497,Microsoft ASP.NET,9.3,0.23254,False,50.2,4.3,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2497
+CVE-2009-2503,Microsoft ASP.NET,9.3,0.22205,False,49.6,4.2,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2503
+CVE-2009-0090,Microsoft ASP.NET,9.3,0.20982,False,48.9,4.2,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-0090
+CVE-2009-2504,Microsoft ASP.NET,9.3,0.20982,False,48.9,4.2,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2504
+CVE-2009-2528,Microsoft ASP.NET,9.3,0.20452,False,48.6,4.1,17,False,https://nvd.nist.gov/vuln/detail/CVE-2009-2528
+CVE-2010-3228,Microsoft ASP.NET,9.3,0.19751,False,48.2,4.1,16,False,https://nvd.nist.gov/vuln/detail/CVE-2010-3228
+CVE-2011-0664,Microsoft ASP.NET,9.3,0.16006,False,46.1,3.8,15,False,https://nvd.nist.gov/vuln/detail/CVE-2011-0664
+CVE-2008-5100,Microsoft ASP.NET,10.0,0.08367,False,45.0,3.6,18,False,https://nvd.nist.gov/vuln/detail/CVE-2008-5100
+CVE-2011-1253,Microsoft ASP.NET,9.3,0.13241,False,44.6,3.7,15,False,https://nvd.nist.gov/vuln/detail/CVE-2011-1253
+CVE-2012-0014,Microsoft ASP.NET,7.8,0.2817,False,44.4,3.9,14,False,https://nvd.nist.gov/vuln/detail/CVE-2012-0014
