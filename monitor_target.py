@@ -43,13 +43,14 @@ def diff(old, new):
 def main():
     target = sys.argv[1] if len(sys.argv) > 1 else "testaspnet.vulnweb.com"
     host = re.sub(r"^https?://", "", target).split("/")[0]
-    reports = os.path.join(HERE, "reports")
+    # per-cycle scans go into a gitignored subfolder to avoid repo churn
+    reports = os.path.join(HERE, "reports", "monitor")
     os.makedirs(reports, exist_ok=True)
     state_path = os.path.join(reports, f".monitor_state_{host}.json")
 
     # run scan (skip live CVE to keep each cycle fast)
     subprocess.run([sys.executable, os.path.join(HERE, "ayed_recon.py"),
-                    target, "--no-cve"],
+                    target, "--no-cve", "--outdir", reports],
                    capture_output=True, text=True, timeout=150)
 
     # newest json report for this host
