@@ -472,35 +472,60 @@ def owasp_map_from_findings(fingerprint, tls):
     return flags
 
 
+def _nvd_query(session, keyword, fetch=30):
+    """Single NVD 2.0 keyword call. Returns (list_of_cves, error_or_None)."""
+    url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    params = {"keywordSearch": keyword, "resultsPerPage": fetch}
+    r = session.get(url, params=params, timeout=25, verify=False)
+    if not r.ok:
+        return [], f"HTTP {r.status_code}"
+    data = r.json()
+    cves = []
+    for item in data.get("vulnerabilities", []):
+        c = item.get("cve", {})
+        desc = ""
+        for d in c.get("descriptions", []):
+            if d.get("lang") == "en":
+                desc = d.get("value", ""); break
+        metrics = c.get("metrics", {})
+        score, severity = None, None
+        for key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+            if metrics.get(key):
+                cvss = metrics[key][0]["cvssData"]
+                score = cvss.get("baseScore")
+                severity = cvss.get("baseSeverity") or metrics[key][0].get("baseSeverity")
+                break
+        cves.append({"id": c.get("id"),
+                     "published": (c.get("published") or "")[:10],
+                     "score": score, "severity": severity,
+                     "summary": desc[:240]})
+    return cves, None
+
+
 def nvd_lookup(session, keyword, limit=5):
-    """Live NVD 2.0 keyword search, newest first. Best-effort."""
+    """Live NVD 2.0 search, newest first.
+
+    Tries the full keyword (with version); if that yields nothing, falls
+    back to the product name without the trailing version token, since
+    NVD keyword search requires every token to match a description.
+    """
     if not session:
         return {"error": "no session"}
     try:
-        url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-        params = {"keywordSearch": keyword, "resultsPerPage": limit}
-        r = session.get(url, params=params, timeout=25, verify=False)
-        if not r.ok:
-            return {"error": f"HTTP {r.status_code}"}
-        data = r.json()
-        cves = []
-        for item in data.get("vulnerabilities", [])[:limit]:
-            c = item.get("cve", {})
-            desc = ""
-            for d in c.get("descriptions", []):
-                if d.get("lang") == "en":
-                    desc = d.get("value", ""); break
-            metrics = c.get("metrics", {})
-            score = None
-            for key in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
-                if key in metrics and metrics[key]:
-                    score = metrics[key][0]["cvssData"].get("baseScore")
-                    break
-            cves.append({"id": c.get("id"),
-                         "published": c.get("published", "")[:10],
-                         "score": score,
-                         "summary": desc[:240]})
-        return {"keyword": keyword, "results": cves}
+        cves, err = _nvd_query(session, keyword)
+        used = keyword
+        if not cves and not err:
+            # drop version-looking trailing tokens and retry
+            base = re.sub(r"\s+[\d][\w.\-]*$", "", keyword).strip()
+            if base and base != keyword:
+                time.sleep(0.7)
+                cves, err = _nvd_query(session, base)
+                used = base + " (product-only fallback)"
+        if err:
+            return {"error": err, "keyword": keyword}
+        # genuine newest-first ordering
+        cves.sort(key=lambda c: c["published"], reverse=True)
+        return {"keyword": used, "total": len(cves), "results": cves[:limit]}
     except Exception as e:
         return {"error": str(e)}
 
@@ -682,12 +707,13 @@ def _build_markdown(target, d, ts):
         A(f"- 📚 CVE/MITRE: {links['cve_mitre']}")
         live = c.get("nvd_live", {})
         if live.get("results"):
-            A(f"\n  **Recent CVEs (NVD, newest first):**")
-            A("\n  | CVE | Published | CVSS | Summary |")
-            A("  |-----|-----------|------|---------|")
+            A(f"\n  **Recent CVEs (NVD keyword `{escape(str(live.get('keyword','')))}`, "
+              f"newest first):**")
+            A("\n  | CVE | Published | CVSS | Severity | Summary |")
+            A("  |-----|-----------|------|----------|---------|")
             for r in live["results"]:
                 A(f"  | {r['id']} | {r['published']} | {r['score']} | "
-                  f"{escape(str(r['summary']))[:80]} |")
+                  f"{r.get('severity','')} | {escape(str(r['summary']))[:80]} |")
         elif live.get("error"):
             A(f"  - _NVD live query: {live['error']} (use the search link above)_")
 
