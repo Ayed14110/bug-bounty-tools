@@ -802,26 +802,29 @@ def finding_flags(scan: dict):
     return flags
 
 # Red-team next-step suggestions keyed by flag / tag. Verification only, no exploitation.
+# Technique numbers (T#) map to RED_TEAM_METHODOLOGY.md.
 PLAYBOOK_RULES = {
-    "JSON_API": "Map request/response schema; look for object identifiers (id/uid/order_id). Manually test authorization/IDOR using two accounts you control.",
-    "CORS_REVIEW": "Reproduce the cross-origin read in a browser with an attacker-controlled origin and a test account; confirm whether authenticated sensitive data is actually readable before reporting.",
-    "REFLECTION": "Inspect the reflection context (HTML/JS/attribute) manually to judge whether output encoding is missing; do not run automated payloads against production.",
-    "LOCATION_REFLECTION": "Check whether the reflected parameter drives the Location header and whether external hosts are honored (open-redirect path).",
-    "REDIRECT_REVIEW": "Manually confirm the external redirect and whether it is reachable pre-auth or chains into OAuth/token flows.",
-    "STATE_METHODS_ADVERTISED": "PUT/PATCH/DELETE advertised only — do NOT invoke blindly. Verify intended semantics with the program/owner and use resources you own.",
-    "AUTHENTICATION_REQUIRED": "Enumerate what the endpoint exposes unauthenticated vs authenticated; check for verbose errors and rate-limit gaps on the auth flow.",
-    "FORBIDDEN": "Probe for path/method/parameter variations that change the 403 (documentation only); check for access-control misconfig with your own accounts.",
-    "MISSING_SECURITY_HEADERS": "Note missing headers (CSP/HSTS/etc.) as hardening findings; assess exploitability in context rather than reporting as-is.",
-    "WEAK_COOKIE_FLAGS": "Record session/auth cookies missing Secure/HttpOnly/SameSite; tie to a concrete impact (session theft/CSRF) before reporting.",
+    "JSON_API": "[T1/T3/T22] Map request/response schema and object identifiers (id/uid/order_id). Manually test IDOR/BOLA and mass-assignment using two accounts you control.",
+    "CORS_REVIEW": "[T28] Reproduce the cross-origin read in a browser with an attacker-controlled origin and a test account; confirm authenticated sensitive data is actually readable before reporting.",
+    "REFLECTION": "[T11/T13] Inspect the reflection context (HTML/JS/attribute) manually for missing output encoding / template evaluation ({{7*7}}); do not run automated payloads against production.",
+    "LOCATION_REFLECTION": "[T21] Check whether the reflected parameter drives the Location header and whether external hosts are honored (open-redirect path).",
+    "REDIRECT_REVIEW": "[T21/T7] Confirm the external redirect, then assess chaining into OAuth code theft or SSRF.",
+    "STATE_METHODS_ADVERTISED": "[T2/T25] PUT/PATCH/DELETE advertised only — do NOT invoke blindly. Test BFLA and method-override (X-HTTP-Method-Override) semantics on resources you own.",
+    "AUTHENTICATION_REQUIRED": "[T23/T24] Compare unauth vs auth exposure; look for shadow/older API versions (v1/internal) and rate-limit gaps on the auth flow.",
+    "FORBIDDEN": "[T5] Try path/method/header variations (X-Original-URL, trailing dot, case, .json) that change the 403 — documentation only, with your own accounts.",
+    "MISSING_SECURITY_HEADERS": "[T18/T19] Missing CSP/HSTS/etc. — assess cache poisoning and Host-header injection impact in context, not as a bare finding.",
+    "WEAK_COOKIE_FLAGS": "[T9/T10] Session/auth cookies missing Secure/HttpOnly/SameSite; tie to session theft/CSRF or 2FA-step separation before reporting.",
 }
 TAG_PLAYBOOK = {
-    "graphql": "Attempt introspection (if allowed by scope) to map the schema; review for object-level authorization gaps.",
-    "api-docs": "Read the exposed OpenAPI/Swagger spec to enumerate endpoints, parameters, and auth requirements for targeted manual testing.",
-    "privileged": "Treat as high priority: verify whether admin/internal functionality is reachable by a low-privilege account.",
-    "auth": "Review the full auth flow for logic gaps: token handling, reset flows, verification bypass — manually, with your own accounts.",
-    "identity": "Prime target for IDOR/BOLA: enumerate identifiers and confirm object-level authorization with two controlled accounts.",
-    "file": "Review file/export endpoints for path traversal or unauthorized object access, scoped and non-destructive.",
-    "ingest": "Review upload/import handling (type/size/content validation) using benign test files only.",
+    "graphql": "[T22] Attempt introspection (if scope allows), then test aliasing/batching for rate-limit bypass and BOLA on node ids you own.",
+    "api-docs": "[T23] Read the exposed OpenAPI/Swagger spec to enumerate endpoints/params/auth for targeted manual testing and version drift.",
+    "privileged": "[T2] High priority: verify whether admin/internal functionality is reachable by a low-privilege account (BFLA).",
+    "auth": "[T6/T7/T8] Review the auth flow for logic gaps: JWT handling (alg/none/kid), OAuth redirect_uri/state, password-reset host-header — manually, with your own accounts.",
+    "identity": "[T1] Prime target for IDOR/BOLA: enumerate identifiers and confirm object-level authorization with two controlled accounts.",
+    "file": "[T12/T27] Review file/export endpoints for path traversal, SSRF via url params, and exposed source/secret leaks — scoped and non-destructive.",
+    "ingest": "[T3] Review upload/import handling (type/size/content validation, mass assignment) using benign test files only.",
+    "callback": "[T12/T7] Callback/webhook params are SSRF and OAuth-chain candidates: point at a collaborator host you own and observe.",
+    "redirect": "[T21] Open-redirect candidate: confirm external Location, then assess OAuth/SSRF chaining.",
 }
 
 def build_playbook(scans: list):
@@ -945,6 +948,7 @@ def write_playbook_md(out: Path, data: dict, playbook: list):
         "exploitation, or out-of-scope activity. Always test authorization with "
         "accounts and resources you own.", "",
     ]
+    md += ["Technique tags `[T#]` reference `RED_TEAM_METHODOLOGY.md` (30 advanced techniques).", ""]
     if not playbook:
         md += ["_No prioritized leads generated._", ""]
     for i, e in enumerate(playbook, 1):
@@ -1014,7 +1018,8 @@ def write_report_md(out: Path, data: dict):
         "- `playbook.md` — prioritized manual-test playbook",
         "- `curl_evidence.sh` — exact curl commands",
         "- `report.json` — structured evidence",
-        "- `report.html` — visual report", "",
+        "- `report.html` — visual report",
+        "- `RED_TEAM_METHODOLOGY.md` — 30 advanced attacker-mindset techniques (repo root)", "",
         "## Manual verification priority", "",
         "1. JSON/API endpoints with object/account/order identifiers (IDOR/BOLA).",
         "2. CORS leads only when sensitive authenticated data is readable.",
