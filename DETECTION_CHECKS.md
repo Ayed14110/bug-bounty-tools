@@ -49,6 +49,29 @@
 | P109 | jwt_weakness | تفكيك JWT: alg=none، HMAC confusion، jku/kid، لا exp، claims حسّاسة |
 | P110 | takeover_fingerprint | بصمات subdomain takeout (S3/Heroku/GitHub Pages/...) |
 
+## د) محرك الكشف المتقدم (data-driven) — 130+ فحص إضافي
+يُنفَّذ ضمن نفس Phase 5، بيانات قابلة للتوسعة:
+
+| المجموعة | العدد | أمثلة |
+|---|---|---|
+| **BODY_SIGNATURES** | 25 | أخطاء SQL لكل قاعدة (MySQL/Postgres/MSSQL/Oracle/SQLite)، stack traces (PHP/ASP.NET/Java/Python/Ruby/Node)، صفحات debug (phpinfo/Whoops/Werkzeug/Django/Rails)، تسريبات (مسارات، AWS ARN، S3، GCP SA، private keys، connection strings) |
+| **HEADER_RULES** | 10 | X-Debug/X-Runtime/X-Powered-By/X-AspNet-Version، X-Cache (poisoning)، Via، cf-ray، debug cookies |
+| **TECH_FINGERPRINTS** | 28 | WordPress/Drupal/Joomla/Magento/Shopify، Laravel/Django/Rails/Express/Next/Nuxt/Angular/React/Spring/ASP.NET، Nginx/Apache/IIS، Cloudflare/Akamai/Fastly/Imperva/F5/Sucuri/AWS-WAF/ModSecurity |
+| **SENSITIVE_PATHS** | 45 | `.git/.svn/.hg`، `.env*`، `.aws/credentials`، `.npmrc/.htpasswd`، `settings.py/appsettings.json/web.config`، `docker-compose/Dockerfile`، `*.sql` dumps، `actuator/*` (env/heapdump/mappings)، `metrics/debug/vars`، swagger/openapi |
+| **SECRET_PATTERNS** | 18 | AWS/Google/Slack/GitHub/GitLab/Stripe/Twilio/SendGrid/Mailgun/Firebase/NPM + private keys + generic assignments |
+
+### محرك الفحص النشط (اختياري: `--intrusive`) — علامات حميدة فقط
+| الصنف | كيف يكشف | تقنية |
+|---|---|---|
+| XSS_REFLECTION | علامة `ayedx…<b>` تنعكس بدون ترميز | T11 |
+| SQLI_ERROR | إضافة `'` واحدة تُظهر خطأ قاعدة بيانات | T14 |
+| SSTI | `{{7*7}}` يُقيَّم إلى 49 | T13 |
+| LFI_TRAVERSAL | `../../etc/passwd` يطابق `root:x:0:0` (إثبات فقط) | T12 |
+
+> `--intrusive` **مطفأ افتراضيًا**، يرسل قيمة فحص واحدة حميدة لكل بارامتر (بحد أقصى ٣ بارامترات × ١٢ رابط)، بدون brute أو حمولات تدميرية أو time-based. استعمله على أهداف مصرّح بها فقط.
+
+**الإجمالي:** ‏٣٠ فحص (P81–P110) + ‏130+ فحص من المحرك المتقدم = **‏160+ فحص كشف تنفّذه الأداة فعلاً.**
+
 ## ملاحظة الحدود
 كل ما سبق **كشف** لا **استغلال**. تقنيات الاستغلال الفعلي (request smuggling،
 brute، race، SSRF لبيانات السحابة، تزوير JWT مُرسل، dependency confusion...) موثّقة

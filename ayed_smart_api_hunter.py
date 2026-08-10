@@ -1104,11 +1104,259 @@ def check_backup_files(store, delay: float, limit: int = 8):
                 break
     return out
 
-def run_active_checks(target: str, store, scans: list, delay: float, enabled: bool):
+# =========================================================================
+# Advanced detection engine (data-driven) — 100+ real checks
+#
+# Sources of checks:
+#   - BODY_SIGNATURES  : ~35 response-body signatures (SQL errors per DBMS,
+#                        stack traces per stack, debug pages, info leaks)
+#   - HEADER_RULES     : ~12 header-based detections
+#   - TECH_FINGERPRINTS: ~30 technology / framework / WAF / CDN fingerprints
+#   - SENSITIVE_PATHS  : ~45 sensitive path/file exposures (bounded GET probes)
+#   - active_probes()  : benign marker probes for reflection / SQL-error /
+#                        SSTI / LFI classes — OPT-IN via --intrusive only.
+#
+# Everything DETECTS; nothing weaponizes. No brute force, no flooding, no
+# request smuggling, no forged-auth replay, no internal SSRF, no data
+# destruction. Intrusive probes send a single benign marker per parameter.
+# =========================================================================
+
+def _rx(p):
+    return re.compile(p, re.I)
+
+# (id, title, category, severity, technique, regex)
+BODY_SIGNATURES = [
+    # --- SQL errors by DBMS
+    ("sql-mysql", "MySQL error", "sql-error", "high", "T14/P56", _rx(r"you have an error in your sql syntax|warning:\s*mysql_|mysql_fetch|com\.mysql\.jdbc|valid MySQL result")),
+    ("sql-postgres", "PostgreSQL error", "sql-error", "high", "T14/P56", _rx(r"pg_query\(\)|PostgreSQL.*ERROR|org\.postgresql\.util\.PSQLException|unterminated quoted string")),
+    ("sql-mssql", "MSSQL error", "sql-error", "high", "T14/P56", _rx(r"unclosed quotation mark|microsoft ole db provider|odbc sql server driver|System\.Data\.SqlClient|Incorrect syntax near")),
+    ("sql-oracle", "Oracle error", "sql-error", "high", "T14/P56", _rx(r"ORA-\d{5}|quoted string not properly terminated|oracle\.jdbc")),
+    ("sql-sqlite", "SQLite error", "sql-error", "high", "T14/P56", _rx(r"sqlite3?\.OperationalError|SQLite/JDBCDriver|sqlite_error")),
+    ("sql-generic", "Generic SQL error", "sql-error", "high", "T14/P56", _rx(r"SQLSTATE\[|sql syntax.*error|unexpected end of sql")),
+    # --- Stack traces by stack
+    ("st-php", "PHP error/stack", "stack-trace", "medium", "P81", _rx(r"(fatal error|warning|notice|parse error):.*(on line|in .*\.php)|Stack trace:\s*#0")),
+    ("st-aspnet", "ASP.NET error", "stack-trace", "medium", "P81", _rx(r"Server Error in .* Application|System\.Web\.|Microsoft \.NET Framework|\[SqlException")),
+    ("st-java", "Java/Spring trace", "stack-trace", "medium", "P81", _rx(r"javax?\.servlet|org\.springframework|java\.lang\.[A-Za-z.]+Exception|at [\w.$]+\([\w]+\.java:\d+\)")),
+    ("st-python", "Python traceback", "stack-trace", "medium", "P81", _rx(r"Traceback \(most recent call last\)|Werkzeug Debugger|Django Version|File \".*\.py\", line \d+")),
+    ("st-ruby", "Ruby/Rails trace", "stack-trace", "medium", "P81", _rx(r"ActionController::|app/controllers/|/gems/|rails\.error")),
+    ("st-node", "Node.js trace", "stack-trace", "medium", "P81", _rx(r"at Object\.<anonymous>|/node_modules/|ReferenceError:.*at ")),
+    # --- Debug / dangerous pages
+    ("dbg-phpinfo", "phpinfo() page", "debug", "high", "P95", _rx(r"<title>phpinfo\(\)|PHP Version</td>")),
+    ("dbg-whoops", "Whoops debug page", "debug", "high", "P95", _rx(r"Whoops, looks like something went wrong|/vendor/filp/whoops")),
+    ("dbg-werkzeug", "Werkzeug console", "debug", "high", "P95", _rx(r"Werkzeug Debugger|__debugger__|console-lock")),
+    ("dbg-django", "Django DEBUG page", "debug", "high", "P95", _rx(r"You're seeing this error because you have <code>DEBUG = True|Django tried these URL patterns")),
+    ("dbg-railsdev", "Rails dev error", "debug", "high", "P95", _rx(r"Full Trace</a>|Application Trace</a>|Rails\.root:")),
+    # --- Info leaks
+    ("leak-abs-path-unix", "Unix path disclosure", "info-leak", "low", "P84", _rx(r"/(?:var/www|home/[\w.-]+|usr/local|opt)/[\w./-]+")),
+    ("leak-abs-path-win", "Windows path disclosure", "info-leak", "low", "P84", _rx(r"[C-Z]:\\\\(?:inetpub|windows|users|xampp|wwwroot)")),
+    ("leak-aws-arn", "AWS ARN", "info-leak", "medium", "P71", _rx(r"arn:aws:[a-z0-9-]+:[a-z0-9-]*:\d{12}:")),
+    ("leak-s3-url", "S3 bucket URL", "info-leak", "medium", "P71", _rx(r"[a-z0-9.-]+\.s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com")),
+    ("leak-gcp-sa", "GCP service account", "info-leak", "high", "P75", _rx(r"\"type\"\s*:\s*\"service_account\"")),
+    ("leak-private-key", "Private key block", "info-leak", "critical", "P79", _rx(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----")),
+    ("leak-conn-string", "DB connection string", "info-leak", "high", "P79", _rx(r"(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis)://[^\s\"'<>]+:[^\s\"'<>]+@")),
+    ("leak-jwt", "JWT token", "info-leak", "medium", "T6", JWT_RE),
+]
+
+# (id, title, technique, header, regex-or-None) — regex None means "present"
+HEADER_RULES = [
+    ("hdr-debug", "Debug header exposed", "P95", "x-debug", None),
+    ("hdr-runtime", "Runtime version leak", "P82", "x-runtime", None),
+    ("hdr-powered", "X-Powered-By disclosure", "P82", "x-powered-by", None),
+    ("hdr-aspnet", "ASP.NET version leak", "P82", "x-aspnet-version", None),
+    ("hdr-backend", "Backend server header", "P82", "x-backend-server", None),
+    ("hdr-cache-hit", "Cache hit header (poisoning surface)", "P63", "x-cache", _rx(r"hit")),
+    ("hdr-via-proxy", "Via/proxy header", "P67", "via", None),
+    ("hdr-amz-id", "AWS request id header", "P71", "x-amz-request-id", None),
+    ("hdr-cf-ray", "Cloudflare ray id", "waf", "cf-ray", None),
+    ("hdr-set-cookie-debug", "Debug cookie", "P95", "set-cookie", _rx(r"(?:debug|test|dev)=")),
+]
+
+# name -> (kind, regex) over combined body+headers
+TECH_FINGERPRINTS = {
+    "WordPress": ("cms", _rx(r"/wp-content/|/wp-includes/|wp-json|X-Pingback")),
+    "Drupal": ("cms", _rx(r"Drupal\.settings|/sites/default/files|X-Drupal-Cache|X-Generator: Drupal")),
+    "Joomla": ("cms", _rx(r"/media/jui/|com_content|Joomla!|/administrator/")),
+    "Magento": ("cms", _rx(r"/skin/frontend/|Mage\.Cookies|/static/version\d+")),
+    "Shopify": ("cms", _rx(r"cdn\.shopify\.com|Shopify\.theme|x-shopid")),
+    "Laravel": ("framework", _rx(r"laravel_session|XSRF-TOKEN|/vendor/laravel")),
+    "Django": ("framework", _rx(r"csrftoken|__admin_media_prefix__|X-Frame-Options: DENY.*wsgi")),
+    "Flask/Werkzeug": ("framework", _rx(r"Werkzeug/|Server: Werkzeug")),
+    "Ruby on Rails": ("framework", _rx(r"csrf-param|authenticity_token|X-Runtime|_rails")),
+    "Express": ("framework", _rx(r"X-Powered-By: Express")),
+    "Next.js": ("framework", _rx(r"__NEXT_DATA__|/_next/static|x-nextjs")),
+    "Nuxt/Vue": ("framework", _rx(r"__NUXT__|data-n-head|/_nuxt/")),
+    "Angular": ("framework", _rx(r"ng-version|/@angular/|ng-app")),
+    "React": ("framework", _rx(r"data-reactroot|__REACT_DEVTOOLS|react-dom")),
+    "Spring Boot": ("framework", _rx(r"whitelabel error page|/actuator|org\.springframework\.boot")),
+    "ASP.NET": ("framework", _rx(r"__VIEWSTATE|ASP\.NET|X-AspNet-Version")),
+    "Nginx": ("server", _rx(r"Server:\s*nginx")),
+    "Apache": ("server", _rx(r"Server:\s*Apache")),
+    "IIS": ("server", _rx(r"Server:\s*Microsoft-IIS")),
+    "OpenResty": ("server", _rx(r"Server:\s*openresty")),
+    "Cloudflare": ("cdn/waf", _rx(r"Server:\s*cloudflare|cf-ray|__cf_bm")),
+    "Akamai": ("cdn/waf", _rx(r"AkamaiGHost|X-Akamai|akamai")),
+    "Fastly": ("cdn/waf", _rx(r"X-Served-By:\s*cache.*fastly|Fastly-")),
+    "Imperva/Incapsula": ("waf", _rx(r"incap_ses|visid_incap|X-Iinfo|Incapsula")),
+    "F5 BIG-IP": ("waf", _rx(r"BIGipServer|TS[0-9a-f]{8}=")),
+    "Sucuri": ("waf", _rx(r"X-Sucuri-ID|Sucuri/Cloudproxy")),
+    "AWS WAF/ALB": ("cdn/waf", _rx(r"awselb=|AWSALB|x-amzn-|Server:\s*awselb")),
+    "ModSecurity": ("waf", _rx(r"Mod_Security|NOYB|This error was generated by Mod_Security")),
+}
+
+# (path, body-signature-substring or None, severity, technique)
+SENSITIVE_PATHS = [
+    ("/.git/config", "[core]", "high", "T27/P72"),
+    ("/.git/HEAD", "ref:", "high", "T27/P72"),
+    ("/.gitignore", None, "info", "T27"),
+    ("/.svn/entries", None, "medium", "T27"),
+    ("/.hg/requires", None, "medium", "T27"),
+    ("/.env", "=", "critical", "P79"),
+    ("/.env.local", "=", "critical", "P79"),
+    ("/.env.production", "=", "critical", "P79"),
+    ("/config.json", "{", "medium", "P79"),
+    ("/config.yml", ":", "medium", "P79"),
+    ("/config.php.bak", "<?php", "high", "P106"),
+    ("/wp-config.php.bak", "DB_PASSWORD", "critical", "P106"),
+    ("/settings.py", "SECRET_KEY", "critical", "P79"),
+    ("/appsettings.json", "ConnectionStrings", "high", "P79"),
+    ("/web.config", "<configuration", "medium", "P79"),
+    ("/docker-compose.yml", "services:", "medium", "P72"),
+    ("/Dockerfile", "FROM ", "low", "P72"),
+    ("/.dockerenv", None, "low", "P72"),
+    ("/.aws/credentials", "aws_access_key_id", "critical", "P71"),
+    ("/.npmrc", "_authToken", "high", "P72"),
+    ("/.htpasswd", ":", "high", "P72"),
+    ("/.DS_Store", None, "low", "T27"),
+    ("/backup.zip", None, "medium", "P106"),
+    ("/backup.sql", None, "high", "P106"),
+    ("/dump.sql", None, "high", "P106"),
+    ("/database.sql", None, "high", "P106"),
+    ("/phpinfo.php", "phpinfo()", "high", "P95"),
+    ("/info.php", "phpinfo()", "high", "P95"),
+    ("/server-status", "Apache Server Status", "medium", "P82"),
+    ("/server-info", "Apache Server Information", "medium", "P82"),
+    ("/actuator", "_links", "high", "P95"),
+    ("/actuator/env", "propertySources", "critical", "P95"),
+    ("/actuator/health", "status", "low", "P95"),
+    ("/actuator/heapdump", None, "critical", "P95"),
+    ("/actuator/mappings", "dispatcherServlet", "medium", "P95"),
+    ("/metrics", "# HELP", "low", "P82"),
+    ("/debug/vars", "cmdline", "medium", "P95"),
+    ("/.well-known/security.txt", "Contact", "info", "P97"),
+    ("/robots.txt", None, "info", "recon"),
+    ("/crossdomain.xml", "cross-domain", "low", "T28"),
+    ("/graphql", None, "medium", "T22"),
+    ("/swagger.json", "swagger", "medium", "T23"),
+    ("/openapi.json", "openapi", "medium", "T23"),
+    ("/api/swagger.json", "swagger", "medium", "T23"),
+    ("/.well-known/openid-configuration", "authorization_endpoint", "info", "P98"),
+]
+
+def scan_body_signatures(scan: dict):
+    base = scan.get("tests", {}).get("get", {})
+    body = base.get("body_text", "")[:120000]
+    header_blob = " ".join(f"{k}: {v}" for k, vals in base.get("headers", {}).items() for v in vals)
+    hay = body + "\n" + header_blob
+    out = []
+    for sid, title, cat, sev, tech, rx in BODY_SIGNATURES:
+        m = rx.search(hay)
+        if m:
+            out.append({"id": sid, "title": title, "category": cat, "severity": sev,
+                        "technique": tech, "match": m.group(0)[:80]})
+    return out
+
+def scan_header_rules(scan: dict):
+    base = scan.get("tests", {}).get("get", {})
+    out = []
+    for hid, title, tech, header, rx in HEADER_RULES:
+        vals = base.get("headers", {}).get(header, [])
+        for v in vals:
+            if rx is None or rx.search(v):
+                out.append({"id": hid, "title": title, "technique": tech,
+                            "header": header, "value": v[:80]})
+                break
+    return out
+
+def fingerprint_tech(scan: dict):
+    base = scan.get("tests", {}).get("get", {})
+    body = base.get("body_text", "")[:60000]
+    header_blob = "\n".join(f"{k}: {v}" for k, vals in base.get("headers", {}).items() for v in vals)
+    hay = header_blob + "\n" + body
+    out = []
+    for name, (kind, rx) in TECH_FINGERPRINTS.items():
+        if rx.search(hay):
+            out.append({"name": name, "kind": kind})
+    return out
+
+def check_sensitive_paths(origin: str, delay: float, limit: int):
+    findings = []
+    for path, sig, sev, tech in SENSITIVE_PATHS[:limit]:
+        time.sleep(delay)
+        r = curl_request(origin + path, "GET")
+        code = int(r.get("meta", {}).get("http_code") or 0)
+        body = r.get("body_text", "")
+        size = int(r.get("meta", {}).get("size_download") or 0)
+        if code == 200 and size > 0 and (sig is None or sig.lower() in body.lower()):
+            findings.append({"url": origin + path, "status": code, "severity": sev,
+                             "technique": tech, "size": size, "command": r.get("command")})
+    return findings
+
+# --- Intrusive active probes (OPT-IN via --intrusive): benign markers only
+_SQL_ERR_RX = _rx(r"you have an error in your sql syntax|unclosed quotation mark|ORA-\d{5}|PostgreSQL.*ERROR|sqlite3?\.OperationalError|SQLSTATE\[|Incorrect syntax near|unterminated quoted string")
+
+def active_probes(scan: dict, delay: float, max_params: int = 3):
+    url = scan["url"]
+    params = parse_qsl(urlsplit(url).query, keep_blank_values=True)
+    if not params:
+        return []
+    base_body = scan.get("tests", {}).get("get", {}).get("body_text", "")
+    base_has_sql = bool(_SQL_ERR_RX.search(base_body))
+    p = urlsplit(url)
+    results = []
+
+    def send(changed):
+        test_url = urlunsplit((p.scheme, p.netloc, p.path, urlencode(changed, doseq=True), ""))
+        time.sleep(delay)
+        return test_url, curl_request(test_url, "GET")
+
+    for idx, (key, original) in enumerate(params[:max_params]):
+        rid = uuid.uuid4().hex[:8]
+        # 1) reflection / XSS context
+        marker = f"ayedx{rid}"
+        ch = list(params); ch[idx] = (key, f"{marker}<b>x</b>")
+        turl, r = send(ch)
+        if f"{marker}<b>x</b>" in r.get("body_text", ""):
+            results.append({"parameter": key, "class": "XSS_REFLECTION", "technique": "T11",
+                            "detail": "marker reflected unencoded (HTML context)", "url": turl, "command": r.get("command")})
+        # 2) SQL error-based
+        ch = list(params); ch[idx] = (key, original + "'")
+        turl, r = send(ch)
+        if _SQL_ERR_RX.search(r.get("body_text", "")) and not base_has_sql:
+            results.append({"parameter": key, "class": "SQLI_ERROR", "technique": "T14",
+                            "detail": "DB error triggered by a single quote", "url": turl, "command": r.get("command")})
+        # 3) SSTI (template evaluation)
+        tmarker = f"ayed{rid}"
+        ch = list(params); ch[idx] = (key, f"{tmarker}{{{{7*7}}}}")
+        turl, r = send(ch)
+        if f"{tmarker}49" in r.get("body_text", ""):
+            results.append({"parameter": key, "class": "SSTI", "technique": "T13",
+                            "detail": "template expression evaluated (7*7=49)", "url": turl, "command": r.get("command")})
+        # 4) LFI / path traversal read canary (proof-of-vuln only; content not stored)
+        ch = list(params); ch[idx] = (key, "../../../../../../etc/passwd")
+        turl, r = send(ch)
+        if "root:x:0:0" in r.get("body_text", ""):
+            results.append({"parameter": key, "class": "LFI_TRAVERSAL", "technique": "T12",
+                            "detail": "path traversal read /etc/passwd (canary matched)", "url": turl, "command": r.get("command")})
+    return results
+
+def run_active_checks(target: str, store, scans: list, delay: float, enabled: bool,
+                      intrusive: bool = False, max_paths: int = 45):
     """Coordinate the non-destructive active detection phase."""
     findings = {"jwt": [], "secrets": store.secret_findings, "takeover": [],
                 "exposed_files": [], "graphql_introspection": [], "bypass_403": [],
-                "passive": [], "host_checks": {}, "source_maps": [], "backup_files": []}
+                "passive": [], "host_checks": {}, "source_maps": [], "backup_files": [],
+                "signatures": [], "header_findings": [], "fingerprints": [],
+                "path_exposure": [], "active_probes": []}
     if not enabled:
         return findings
 
@@ -1126,13 +1374,19 @@ def run_active_checks(target: str, store, scans: list, delay: float, enabled: bo
     findings["source_maps"] = check_source_maps(store, delay)
     findings["backup_files"] = check_backup_files(store, delay)
 
+    # Sensitive path/file exposure engine (~45 curated paths)
+    info(f"Sensitive path exposure engine ({min(max_paths, len(SENSITIVE_PATHS))} paths)")
+    findings["path_exposure"] = check_sensitive_paths(origin, delay, max_paths)
+    ok(f"Path-exposure leads: {len(findings['path_exposure'])}")
+
     # GraphQL introspection on discovered graphql endpoints
     gql = [d["url"] for d in store.sorted() if "graphql" in d["tags"]][:5]
     for g in gql:
         info(f"GraphQL introspection check: {g}")
         findings["graphql_introspection"].append(check_graphql_introspection(g, delay))
 
-    # Per-scan checks: JWT, takeover, 403 bypass, and passive local-parse detections
+    # Per-scan checks: JWT, takeover, 403 bypass, passive + signature/header/fingerprint engines
+    fp_seen = set()
     for s in scans:
         base = s.get("tests", {}).get("get", {})
         jwts = find_jwt_findings(base)
@@ -1156,6 +1410,34 @@ def run_active_checks(target: str, store, scans: list, delay: float, enabled: bo
             findings["passive"].append({"url": s["url"], "items": pf})
             s["passive"] = pf
             s.setdefault("flags", []).append("PASSIVE_DETECTIONS")
+        # Signature engine (SQL errors, stack traces, debug pages, info leaks)
+        sig = scan_body_signatures(s)
+        if sig:
+            findings["signatures"].append({"url": s["url"], "items": sig})
+            s.setdefault("flags", []).append("SIGNATURE_MATCH")
+            if any(x["category"] == "sql-error" for x in sig):
+                s.setdefault("flags", []).append("SQL_ERROR_DISCLOSURE")
+        hr = scan_header_rules(s)
+        if hr:
+            findings["header_findings"].append({"url": s["url"], "items": hr})
+        # Technology / WAF / CDN fingerprints (deduped across host)
+        for fp in fingerprint_tech(s):
+            key = fp["name"]
+            if key not in fp_seen:
+                fp_seen.add(key)
+                findings["fingerprints"].append(fp)
+    ok("Detected technologies: " + (", ".join(f["name"] for f in findings["fingerprints"]) or "none"))
+
+    # Intrusive active probes (OPT-IN): benign markers for reflection/SQLi/SSTI/LFI classes
+    if intrusive:
+        warn("Intrusive probes enabled (--intrusive): benign markers only, non-destructive")
+        probe_targets = [s for s in scans if query_keys(s["url"])][:12]
+        for s in probe_targets:
+            info(f"Active probes: {s['url']}")
+            pr = active_probes(s, delay)
+            if pr:
+                findings["active_probes"].append({"url": s["url"], "probes": pr})
+                s.setdefault("flags", []).append("INJECTION_PROBE_LEAD")
     return findings
 
 # ---------------------------------------------------------------------------
@@ -1263,6 +1545,9 @@ PLAYBOOK_RULES = {
     "TAKEOVER_FINGERPRINT": "[subdomain-takeover] Dangling-service fingerprint in the response; confirm the CNAME target is unclaimed, then claim it only if scope allows.",
     "ACCESS_CONTROL_BYPASS_LEAD": "[T5] A path/header variant changed the 401/403 status — reproduce manually and confirm the exposed content is actually sensitive.",
     "PASSIVE_DETECTIONS": "[P81-P96] Passive signals detected (see per-endpoint list): triage each — verbose errors, tech/version disclosure, cacheable JSON, weak headers, secrets/PII in URL — and tie to concrete impact before reporting.",
+    "SIGNATURE_MATCH": "[P81/T14] Response matched an error/leak signature — review the disclosed detail (stack trace, path, key) and assess exploitability.",
+    "SQL_ERROR_DISCLOSURE": "[T14/P56] A database error was disclosed in the response — a strong SQLi indicator; verify manually and non-destructively with your own inputs.",
+    "INJECTION_PROBE_LEAD": "[T11-T14] A benign injection probe reflected/evaluated — confirm the class manually in the right context; do not run destructive payloads against production.",
 }
 TAG_PLAYBOOK = {
     "graphql": "[T22] Attempt introspection (if scope allows), then test aliasing/batching for rate-limit bypass and BOLA on node ids you own.",
@@ -1464,6 +1749,19 @@ def write_report_md(out: Path, data: dict):
         hc = af.get("host_checks", {})
         for key, val in hc.items():
             md.append(f"- **Host check `{key}`** — `{json.dumps(val, ensure_ascii=False)[:220]}`")
+        for pe in af.get("path_exposure", []):
+            md.append(f"- **Exposed path** `[{pe['severity']}]` `{pe['url']}` (HTTP {pe['status']}, {pe['size']}b) — {pe['technique']}")
+        if af.get("fingerprints"):
+            md.append("- **Tech/WAF/CDN fingerprints**: " + ", ".join(f"{f['name']} ({f['kind']})" for f in af["fingerprints"]))
+        for sg in af.get("signatures", []):
+            for it in sg["items"]:
+                md.append(f"- **Signature** `[{it['severity']}]` `{sg['url']}` — {it['title']} ({it['category']}, {it['technique']}) match=`{it['match']}`")
+        for hf in af.get("header_findings", []):
+            for it in hf["items"]:
+                md.append(f"- **Header** `{hf['url']}` — {it['title']}: `{it['header']}: {it['value']}` ({it['technique']})")
+        for ap_ in af.get("active_probes", []):
+            for pr in ap_["probes"]:
+                md.append(f"- **Active probe [{pr['class']}]** `{ap_['url']}` param `{pr['parameter']}` — {pr['detail']} ({pr['technique']})")
         pv = af.get("passive", [])
         if pv:
             md += ["", "### Passive detections (per endpoint)", ""]
@@ -1777,6 +2075,10 @@ def main():
     ap.add_argument("--no-archives", action="store_true", help="Skip gau and waybackurls")
     ap.add_argument("--no-active-checks", action="store_true",
                     help="Skip the non-destructive active detection phase (JWT/secrets/exposed files/GraphQL/403-bypass)")
+    ap.add_argument("--intrusive", action="store_true",
+                    help="Enable benign-marker active probes (reflection/SQL-error/SSTI/LFI). Sends probe values; use only on authorized targets")
+    ap.add_argument("--max-paths", type=int, default=45,
+                    help="Max sensitive paths to probe in the exposure engine (default: 45)")
     ap.add_argument("--out", help="Output directory (skips the interactive save-location prompt)")
     ap.add_argument("--formats", help=f"Comma-separated report formats ({', '.join(VALID_FORMATS)})")
     ap.add_argument("--operator", help="Operator / handle recorded in the report")
@@ -1860,7 +2162,8 @@ def main():
         warn("Active detection skipped (--no-active-checks)")
         active_findings = run_active_checks(target, store, scans, args.delay, enabled=False)
     else:
-        active_findings = run_active_checks(target, store, scans, args.delay, enabled=True)
+        active_findings = run_active_checks(target, store, scans, args.delay, enabled=True,
+                                            intrusive=args.intrusive, max_paths=args.max_paths)
         summary = {k: len(v) for k, v in active_findings.items()}
         ok("Active detection leads: " + ", ".join(f"{k}={n}" for k, n in summary.items() if n))
 
