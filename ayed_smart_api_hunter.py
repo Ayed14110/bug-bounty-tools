@@ -1304,7 +1304,103 @@ def check_sensitive_paths(origin: str, delay: float, limit: int):
 # --- Intrusive active probes (OPT-IN via --intrusive): benign markers only
 _SQL_ERR_RX = _rx(r"you have an error in your sql syntax|unclosed quotation mark|ORA-\d{5}|PostgreSQL.*ERROR|sqlite3?\.OperationalError|SQLSTATE\[|Incorrect syntax near|unterminated quoted string")
 
-def active_probes(scan: dict, delay: float, max_params: int = 3):
+_LDAP_ERR_RX = _rx(r"LDAP: error|Invalid DN syntax|javax\.naming\.|com\.sun\.jndi|ldap_search|Bad search filter")
+_XPATH_ERR_RX = _rx(r"XPathException|xmlXPathEval|SimpleXMLElement::xpath|Invalid expression|MS\.Internal\.Xml|XPath error")
+_NOSQL_ERR_RX = _rx(r"MongoError|CastError|BSONError|unexpected token.*mongo|\$where|E11000|couldn't parse json operator")
+
+# ---- 40 active detection methods (benign payloads; detect, do not exploit) ----
+# Each: id, class, technique, context, payload(orig,marker)->value, detector, raw?
+# detector kinds: reflect | eval | sql_error | ldap_error | xpath_error |
+#                 nosql_error | location | read_canary | header_reflect
+def _pd(id_, cls, tech, ctx, payload, kind, expect=None, raw=False):
+    return {"id": id_, "cls": cls, "tech": tech, "ctx": ctx, "payload": payload,
+            "kind": kind, "expect": expect, "raw": raw}
+
+ACTIVE_PROBE_DEFS = [
+    # --- XSS reflection contexts (T11) — detect unencoded reflection
+    _pd("xss-html", "XSS", "T11", "html body", lambda o, m: f"{m}<b>x</b>", "reflect", lambda m: f"{m}<b>x</b>"),
+    _pd("xss-attr", "XSS", "T11", "attribute", lambda o, m: f'{m}"><svg', "reflect", lambda m: f'{m}"><svg'),
+    _pd("xss-js", "XSS", "T11", "js string", lambda o, m: f"{m}';x//", "reflect", lambda m: f"{m}';x//"),
+    _pd("xss-svg", "XSS", "T11", "svg/markup", lambda o, m: f"{m}<svg/onload=1>", "reflect", lambda m: f"{m}<svg/onload=1>"),
+    _pd("xss-url", "XSS", "T11", "url/href", lambda o, m: f"javascript:{m}//", "reflect", lambda m: f"javascript:{m}//"),
+    _pd("xss-angular", "XSS", "T11", "template inj", lambda o, m: f"{m}{{{{1}}}}", "reflect", lambda m: f"{m}{{{{1}}}}"),
+    _pd("xss-onerror", "XSS", "T11", "img onerror", lambda o, m: f'{m}"><img src=x onerror=1>', "reflect", lambda m: f'{m}"><img src=x onerror=1>'),
+    _pd("xss-close-script", "XSS", "T11", "script close", lambda o, m: f"{m}</script>", "reflect", lambda m: f"{m}</script>"),
+    # --- SQL injection error-based (T14), several syntaxes
+    _pd("sqli-quote", "SQLI_ERROR", "T14", "single quote", lambda o, m: o + "'", "sql_error"),
+    _pd("sqli-dquote", "SQLI_ERROR", "T14", "double quote", lambda o, m: o + '"', "sql_error"),
+    _pd("sqli-paren", "SQLI_ERROR", "T14", "paren break", lambda o, m: o + "')", "sql_error"),
+    _pd("sqli-comment", "SQLI_ERROR", "T14", "comment", lambda o, m: o + "'-- -", "sql_error"),
+    _pd("sqli-backtick", "SQLI_ERROR", "T14", "backtick", lambda o, m: o + "`", "sql_error"),
+    _pd("sqli-hash", "SQLI_ERROR", "T14", "hash comment", lambda o, m: o + "'#", "sql_error"),
+    # --- NoSQL injection error (T14/P56)
+    _pd("nosql-obj", "NOSQL_ERROR", "T14", "operator break", lambda o, m: o + '"}]', "nosql_error"),
+    _pd("nosql-where", "NOSQL_ERROR", "T14", "$where", lambda o, m: o + "'||'1'=='1", "nosql_error"),
+    # --- SSTI across engines (T13) — detect evaluated 49
+    _pd("ssti-jinja", "SSTI", "T13", "Jinja/Twig", lambda o, m: f"{m}{{{{7*7}}}}", "eval", lambda m: f"{m}49"),
+    _pd("ssti-dollar", "SSTI", "T13", "JSP/Spring EL", lambda o, m: f"{m}${{7*7}}", "eval", lambda m: f"{m}49"),
+    _pd("ssti-hash", "SSTI", "T13", "Ruby/Slim", lambda o, m: f"{m}#{{7*7}}", "eval", lambda m: f"{m}49"),
+    _pd("ssti-erb", "SSTI", "T13", "ERB", lambda o, m: f"{m}<%= 7*7 %>", "eval", lambda m: f"{m}49"),
+    _pd("ssti-freemarker", "SSTI", "T13", "Freemarker", lambda o, m: f"{m}${{7*7}}", "eval", lambda m: f"{m}49"),
+    _pd("ssti-velocity", "SSTI", "T13", "Velocity", lambda o, m: f"{m}#set($x=7*7)$x", "eval", lambda m: f"{m}49"),
+    _pd("ssti-smarty", "SSTI", "T13", "Smarty", lambda o, m: f"{m}{{7*7}}", "eval", lambda m: f"{m}49"),
+    # --- LFI / path traversal read canaries (T12) — proof only, content not stored
+    _pd("lfi-unix", "LFI_TRAVERSAL", "T12", "unix passwd", lambda o, m: "../../../../../../etc/passwd", "read_canary", lambda m: "root:x:0:0"),
+    _pd("lfi-unix-enc", "LFI_TRAVERSAL", "T12", "encoded", lambda o, m: "..%2f..%2f..%2f..%2f..%2fetc%2fpasswd", "read_canary", lambda m: "root:x:0:0"),
+    _pd("lfi-unix-dbl", "LFI_TRAVERSAL", "T12", "nested", lambda o, m: "....//....//....//....//etc/passwd", "read_canary", lambda m: "root:x:0:0"),
+    _pd("lfi-win", "LFI_TRAVERSAL", "T12", "windows ini", lambda o, m: "..\\..\\..\\..\\..\\..\\windows\\win.ini", "read_canary", lambda m: "[extensions]"),
+    _pd("lfi-proc", "LFI_TRAVERSAL", "T12", "proc self", lambda o, m: "../../../../../../proc/self/environ", "read_canary", lambda m: "PATH="),
+    # --- Open redirect variants (T21) — detect external Location
+    _pd("redir-slashes", "OPEN_REDIRECT", "T21", "//host", lambda o, m: "//example.invalid/ayed", "location", lambda m: "example.invalid"),
+    _pd("redir-backslash", "OPEN_REDIRECT", "T21", "/\\host", lambda o, m: "/\\example.invalid/ayed", "location", lambda m: "example.invalid"),
+    _pd("redir-abs", "OPEN_REDIRECT", "T21", "absolute", lambda o, m: "https://example.invalid/ayed", "location", lambda m: "example.invalid"),
+    _pd("redir-triple", "OPEN_REDIRECT", "T21", "///host", lambda o, m: "///example.invalid/ayed", "location", lambda m: "example.invalid"),
+    _pd("redir-at", "OPEN_REDIRECT", "T21", "@host", lambda o, m: "https://trusted@example.invalid/", "location", lambda m: "example.invalid"),
+    _pd("redir-space", "OPEN_REDIRECT", "T21", "whitespace", lambda o, m: " https://example.invalid/ayed", "location", lambda m: "example.invalid"),
+    # --- LDAP injection error (T14)
+    _pd("ldap-star", "LDAP_INJ", "T14", "filter break", lambda o, m: o + "*)(uid=*", "ldap_error"),
+    _pd("ldap-amp", "LDAP_INJ", "T14", "and break", lambda o, m: o + "*)(&", "ldap_error"),
+    # --- XPath injection error (T14)
+    _pd("xpath-or", "XPATH_INJ", "T14", "or true", lambda o, m: o + "' or '1'='1", "xpath_error"),
+    _pd("xpath-bracket", "XPATH_INJ", "T14", "bracket", lambda o, m: o + "']", "xpath_error"),
+    # --- CRLF / header injection (T?) — detect injected header reflected
+    _pd("crlf-header", "CRLF_INJECTION", "P54", "response split", lambda o, m: f"{o}%0d%0aX-Ayed-CRLF:{m}", "header_reflect", lambda m: m, True),
+    _pd("crlf-cookie", "CRLF_INJECTION", "P54", "set-cookie", lambda o, m: f"{o}%0d%0aSet-Cookie:ayed={m}", "header_reflect", lambda m: m, True),
+]
+
+def _detect_probe(kind, resp, expect, base_body, base_has_sql):
+    body = resp.get("body_text", "")
+    if kind == "reflect":
+        return expect in body
+    if kind == "eval":
+        return expect in body
+    if kind == "read_canary":
+        return expect in body
+    if kind == "sql_error":
+        return bool(_SQL_ERR_RX.search(body)) and not base_has_sql
+    if kind == "ldap_error":
+        return bool(_LDAP_ERR_RX.search(body))
+    if kind == "xpath_error":
+        return bool(_XPATH_ERR_RX.search(body))
+    if kind == "nosql_error":
+        return bool(_NOSQL_ERR_RX.search(body))
+    if kind == "location":
+        loc = first_header(resp, "location") or ""
+        return expect in loc
+    if kind == "header_reflect":
+        for k, vals in resp.get("headers", {}).items():
+            for v in vals:
+                if expect in v:
+                    return True
+        return False
+    return False
+
+def active_probes(scan: dict, delay: float, max_params: int = 3, budget=None):
+    """Run the 40-method active detection library against a URL's parameters.
+
+    Sends one benign payload per (parameter, method) and DETECTS the class.
+    Respects a shared request budget (list [remaining]) to avoid flooding.
+    """
     url = scan["url"]
     params = parse_qsl(urlsplit(url).query, keep_blank_values=True)
     if not params:
@@ -1314,43 +1410,38 @@ def active_probes(scan: dict, delay: float, max_params: int = 3):
     p = urlsplit(url)
     results = []
 
-    def send(changed):
-        test_url = urlunsplit((p.scheme, p.netloc, p.path, urlencode(changed, doseq=True), ""))
+    def send(target_param_idx, value, raw):
+        if raw:
+            parts = []
+            for j, (k, v) in enumerate(params):
+                parts.append(f"{k}={value if j == target_param_idx else v}")
+            qs = "&".join(parts)
+        else:
+            ch = list(params); ch[target_param_idx] = (params[target_param_idx][0], value)
+            qs = urlencode(ch, doseq=True)
+        test_url = urlunsplit((p.scheme, p.netloc, p.path, qs, ""))
         time.sleep(delay)
         return test_url, curl_request(test_url, "GET")
 
     for idx, (key, original) in enumerate(params[:max_params]):
-        rid = uuid.uuid4().hex[:8]
-        # 1) reflection / XSS context
-        marker = f"ayedx{rid}"
-        ch = list(params); ch[idx] = (key, f"{marker}<b>x</b>")
-        turl, r = send(ch)
-        if f"{marker}<b>x</b>" in r.get("body_text", ""):
-            results.append({"parameter": key, "class": "XSS_REFLECTION", "technique": "T11",
-                            "detail": "marker reflected unencoded (HTML context)", "url": turl, "command": r.get("command")})
-        # 2) SQL error-based
-        ch = list(params); ch[idx] = (key, original + "'")
-        turl, r = send(ch)
-        if _SQL_ERR_RX.search(r.get("body_text", "")) and not base_has_sql:
-            results.append({"parameter": key, "class": "SQLI_ERROR", "technique": "T14",
-                            "detail": "DB error triggered by a single quote", "url": turl, "command": r.get("command")})
-        # 3) SSTI (template evaluation)
-        tmarker = f"ayed{rid}"
-        ch = list(params); ch[idx] = (key, f"{tmarker}{{{{7*7}}}}")
-        turl, r = send(ch)
-        if f"{tmarker}49" in r.get("body_text", ""):
-            results.append({"parameter": key, "class": "SSTI", "technique": "T13",
-                            "detail": "template expression evaluated (7*7=49)", "url": turl, "command": r.get("command")})
-        # 4) LFI / path traversal read canary (proof-of-vuln only; content not stored)
-        ch = list(params); ch[idx] = (key, "../../../../../../etc/passwd")
-        turl, r = send(ch)
-        if "root:x:0:0" in r.get("body_text", ""):
-            results.append({"parameter": key, "class": "LFI_TRAVERSAL", "technique": "T12",
-                            "detail": "path traversal read /etc/passwd (canary matched)", "url": turl, "command": r.get("command")})
+        for d in ACTIVE_PROBE_DEFS:
+            if budget is not None:
+                if budget[0] <= 0:
+                    return results
+                budget[0] -= 1
+            marker = "ayed" + uuid.uuid4().hex[:8]
+            value = d["payload"](original, marker)
+            expect = d["expect"](marker) if d["expect"] else None
+            turl, r = send(idx, value, d["raw"])
+            if _detect_probe(d["kind"], r, expect, base_body, base_has_sql):
+                results.append({"parameter": key, "class": d["cls"], "method": d["id"],
+                                "context": d["ctx"], "technique": d["tech"],
+                                "detail": f"{d['cls']} via {d['ctx']} ({d['id']})",
+                                "url": turl, "command": r.get("command")})
     return results
 
 def run_active_checks(target: str, store, scans: list, delay: float, enabled: bool,
-                      intrusive: bool = False, max_paths: int = 45):
+                      intrusive: bool = False, max_paths: int = 45, probe_budget: int = 150):
     """Coordinate the non-destructive active detection phase."""
     findings = {"jwt": [], "secrets": store.secret_findings, "takeover": [],
                 "exposed_files": [], "graphql_introspection": [], "bypass_403": [],
@@ -1428,13 +1519,18 @@ def run_active_checks(target: str, store, scans: list, delay: float, enabled: bo
                 findings["fingerprints"].append(fp)
     ok("Detected technologies: " + (", ".join(f["name"] for f in findings["fingerprints"]) or "none"))
 
-    # Intrusive active probes (OPT-IN): benign markers for reflection/SQLi/SSTI/LFI classes
+    # Intrusive active probes (OPT-IN): 40-method active detection library
     if intrusive:
-        warn("Intrusive probes enabled (--intrusive): benign markers only, non-destructive")
+        warn(f"Intrusive probes enabled (--intrusive): {len(ACTIVE_PROBE_DEFS)} methods, "
+             f"benign payloads, budget={probe_budget} requests, non-destructive")
+        budget = [probe_budget]
         probe_targets = [s for s in scans if query_keys(s["url"])][:12]
         for s in probe_targets:
-            info(f"Active probes: {s['url']}")
-            pr = active_probes(s, delay)
+            if budget[0] <= 0:
+                warn(f"Probe budget exhausted; {len([x for x in probe_targets])} target(s) not fully covered")
+                break
+            info(f"Active probes ({budget[0]} req left): {s['url']}")
+            pr = active_probes(s, delay, budget=budget)
             if pr:
                 findings["active_probes"].append({"url": s["url"], "probes": pr})
                 s.setdefault("flags", []).append("INJECTION_PROBE_LEAD")
@@ -1761,7 +1857,8 @@ def write_report_md(out: Path, data: dict):
                 md.append(f"- **Header** `{hf['url']}` — {it['title']}: `{it['header']}: {it['value']}` ({it['technique']})")
         for ap_ in af.get("active_probes", []):
             for pr in ap_["probes"]:
-                md.append(f"- **Active probe [{pr['class']}]** `{ap_['url']}` param `{pr['parameter']}` — {pr['detail']} ({pr['technique']})")
+                ctx = pr.get("context", "")
+                md.append(f"- **Active probe [{pr['class']}]** `{ap_['url']}` param `{pr['parameter']}` — {ctx} ({pr.get('method','')}, {pr['technique']})")
         pv = af.get("passive", [])
         if pv:
             md += ["", "### Passive detections (per endpoint)", ""]
@@ -2079,6 +2176,8 @@ def main():
                     help="Enable benign-marker active probes (reflection/SQL-error/SSTI/LFI). Sends probe values; use only on authorized targets")
     ap.add_argument("--max-paths", type=int, default=45,
                     help="Max sensitive paths to probe in the exposure engine (default: 45)")
+    ap.add_argument("--probe-budget", type=int, default=150,
+                    help="Max active-probe requests when --intrusive (default: 150; prevents flooding)")
     ap.add_argument("--out", help="Output directory (skips the interactive save-location prompt)")
     ap.add_argument("--formats", help=f"Comma-separated report formats ({', '.join(VALID_FORMATS)})")
     ap.add_argument("--operator", help="Operator / handle recorded in the report")
@@ -2163,7 +2262,8 @@ def main():
         active_findings = run_active_checks(target, store, scans, args.delay, enabled=False)
     else:
         active_findings = run_active_checks(target, store, scans, args.delay, enabled=True,
-                                            intrusive=args.intrusive, max_paths=args.max_paths)
+                                            intrusive=args.intrusive, max_paths=args.max_paths,
+                                            probe_budget=args.probe_budget)
         summary = {k: len(v) for k, v in active_findings.items()}
         ok("Active detection leads: " + ", ".join(f"{k}={n}" for k, n in summary.items() if n))
 

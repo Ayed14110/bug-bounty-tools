@@ -60,15 +60,24 @@
 | **SENSITIVE_PATHS** | 45 | `.git/.svn/.hg`، `.env*`، `.aws/credentials`، `.npmrc/.htpasswd`، `settings.py/appsettings.json/web.config`، `docker-compose/Dockerfile`، `*.sql` dumps، `actuator/*` (env/heapdump/mappings)، `metrics/debug/vars`، swagger/openapi |
 | **SECRET_PATTERNS** | 18 | AWS/Google/Slack/GitHub/GitLab/Stripe/Twilio/SendGrid/Mailgun/Firebase/NPM + private keys + generic assignments |
 
-### محرك الفحص النشط (اختياري: `--intrusive`) — علامات حميدة فقط
-| الصنف | كيف يكشف | تقنية |
-|---|---|---|
-| XSS_REFLECTION | علامة `ayedx…<b>` تنعكس بدون ترميز | T11 |
-| SQLI_ERROR | إضافة `'` واحدة تُظهر خطأ قاعدة بيانات | T14 |
-| SSTI | `{{7*7}}` يُقيَّم إلى 49 | T13 |
-| LFI_TRAVERSAL | `../../etc/passwd` يطابق `root:x:0:0` (إثبات فقط) | T12 |
+### محرك الفحص النشط (اختياري: `--intrusive`) — ٤٠ طريقة حقيقية
+يرسل حمولة فحص **حميدة واحدة** لكل (بارامتر × طريقة) ويكتشف الصنف فعليًا (كشف نشط، بدون سحب بيانات/تدمير):
 
-> `--intrusive` **مطفأ افتراضيًا**، يرسل قيمة فحص واحدة حميدة لكل بارامتر (بحد أقصى ٣ بارامترات × ١٢ رابط)، بدون brute أو حمولات تدميرية أو time-based. استعمله على أهداف مصرّح بها فقط.
+| الصنف | العدد | الطرق |
+|---|---|---|
+| **XSS** | 8 | html، attribute، js-string، svg، url/javascript، angular، img-onerror، `</script>` |
+| **SQLI_ERROR** | 6 | `'` ، `"` ، `')` ، `'-- -` ، backtick ، `'#` |
+| **SSTI** | 7 | Jinja/Twig، JSP-EL، Ruby، ERB، Freemarker، Velocity، Smarty |
+| **LFI_TRAVERSAL** | 5 | unix passwd، encoded `%2f`، nested `....//`، windows win.ini، proc/self/environ |
+| **OPEN_REDIRECT** | 6 | `//host`، `/\host`، absolute، `///host`، `@host`، whitespace |
+| **NOSQL_ERROR** | 2 | operator break، `$where` |
+| **LDAP_INJ** | 2 | filter break، and-break |
+| **XPATH_INJ** | 2 | or-true، bracket |
+| **CRLF_INJECTION** | 2 | header split، Set-Cookie |
+
+كل صنف يُكتشف بمُدقّق مناسب: انعكاس العلامة (XSS)، تقييم `7*7=49` (SSTI)، خطأ قاعدة/LDAP/XPath/NoSQL، `Location` خارجي (redirect)، `root:x:0:0`/`[extensions]` (LFI)، أو رأس مُحقَّن منعكس (CRLF).
+
+> `--intrusive` **مطفأ افتراضيًا**. حمولات حميدة فقط، بحد `--probe-budget` (افتراضي ١٥٠ طلبًا) لمنع الإغراق، بفاصل زمني، بحد ٣ بارامترات × ١٢ رابط. **بدون** brute/mass، time-based، UNION لسحب بيانات، RCE/command-injection، أو DoS. استعمله على أهداف مصرّح بها فقط.
 
 **الإجمالي:** ‏٣٠ فحص (P81–P110) + ‏130+ فحص من المحرك المتقدم = **‏160+ فحص كشف تنفّذه الأداة فعلاً.**
 
