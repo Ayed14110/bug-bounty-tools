@@ -13,8 +13,12 @@ Engagement flow (phases):
   2. Enumeration        - native HTML crawl + JS endpoint extraction
   3. Attack surface     - scoring, classification, risk tiering
   4. Active baseline    - low-risk curl checks (GET/HEAD/OPTIONS/CORS/...)
-  5. Analysis           - flags, prioritization, manual-test playbook
-  6. Reporting/handoff  - md / json / csv / html / playbook / curl evidence
+  5. Active detection   - non-destructive vuln detection (detect, not exploit):
+                          JWT weakness parsing, secret scanning, exposed
+                          files/paths, GraphQL introspection, 403/401 bypass
+                          surface, subdomain-takeover fingerprints
+  6. Analysis           - flags, prioritization, manual-test playbook
+  7. Reporting/handoff  - md / json / csv / html / playbook / curl evidence
 
 Discovery:
   - Katana / gau / waybackurls (if installed)
@@ -718,12 +722,227 @@ def scan_endpoint(url: str, delay: float):
     return result
 
 # ---------------------------------------------------------------------------
+# Active detection checks (non-destructive; detect, do NOT exploit)
+#
+# Boundary: every check here is a single benign request or pure local parsing.
+# Nothing forges credentials, injects payloads, brute-forces, floods, or
+# performs state changes. Results are LEADS for manual verification, mapped
+# to techniques in RED_TEAM_METHODOLOGY.md / RED_TEAM_50_ADVANCED_PLAYS.md.
+# ---------------------------------------------------------------------------
+
+# --- JWT: decode + weakness assessment (parse only, never send forged tokens)
+JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]*")
+
+def _b64url_decode(seg: str) -> bytes:
+    seg = seg + "=" * (-len(seg) % 4)
+    import base64
+    return base64.urlsafe_b64decode(seg.encode())
+
+def assess_jwt(token: str):
+    try:
+        h_seg, p_seg = token.split(".")[0], token.split(".")[1]
+        header = json.loads(_b64url_decode(h_seg))
+        payload = json.loads(_b64url_decode(p_seg))
+    except Exception:
+        return None
+    weaknesses = []
+    alg = str(header.get("alg", "")).lower()
+    if alg in ("none", ""):
+        weaknesses.append("alg=none (unsigned) [T6]")
+    if alg.startswith("hs"):
+        weaknesses.append("HMAC alg — test weak-secret / RS256->HS256 confusion [T6]")
+    if "jku" in header or "x5u" in header:
+        weaknesses.append("jku/x5u header present — SSRF-to-attacker-JWKS candidate [P41]")
+    if "kid" in header:
+        weaknesses.append("kid header present — injection/path-traversal candidate [P42]")
+    if "exp" not in payload:
+        weaknesses.append("no exp claim — non-expiring token")
+    sensitive = [k for k in payload if k.lower() in ("role", "admin", "is_admin", "scope", "permissions", "user_id", "uid", "email")]
+    if sensitive:
+        weaknesses.append("sensitive claims: " + ",".join(sensitive))
+    return {"header": header, "claims": list(payload.keys()), "weaknesses": weaknesses} if weaknesses else None
+
+def find_jwt_findings(resp: dict):
+    findings = []
+    seen = set()
+    haystacks = []
+    for vals in resp.get("headers", {}).values():
+        haystacks.extend(vals)
+    haystacks.append(resp.get("body_text", "")[:20000])
+    for hay in haystacks:
+        for tok in JWT_RE.findall(hay or ""):
+            if tok in seen:
+                continue
+            seen.add(tok)
+            a = assess_jwt(tok)
+            if a:
+                a["token_prefix"] = tok[:16] + "..."
+                findings.append(a)
+    return findings
+
+# --- Secret scanning in already-fetched JS/HTML (pure local regex)
+SECRET_PATTERNS = {
+    "AWS Access Key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    "AWS Secret (heuristic)": re.compile(r"(?i)aws.{0,20}secret.{0,20}['\"][0-9a-zA-Z/+]{40}['\"]"),
+    "Google API Key": re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
+    "Slack Token": re.compile(r"\bxox[baprs]-[0-9A-Za-z-]{10,}\b"),
+    "GitHub Token": re.compile(r"\bgh[pousr]_[0-9A-Za-z]{36,}\b"),
+    "Stripe Key": re.compile(r"\b(?:sk|rk)_live_[0-9A-Za-z]{24,}\b"),
+    "Private Key Block": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"),
+    "Generic Bearer": re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}"),
+    "JWT in source": JWT_RE,
+}
+
+def scan_secrets(text: str, source: str):
+    out = []
+    for label, pat in SECRET_PATTERNS.items():
+        m = pat.search(text or "")
+        if m:
+            snippet = m.group(0)
+            out.append({"type": label, "source": source, "sample": snippet[:12] + "..." if len(snippet) > 12 else snippet, "technique": "P79/T27"})
+    return out
+
+# --- Subdomain-takeover fingerprints (match already-fetched body)
+TAKEOVER_FINGERPRINTS = {
+    "AWS/S3": "NoSuchBucket",
+    "GitHub Pages": "There isn't a GitHub Pages site here",
+    "Heroku": "No such app",
+    "Shopify": "Sorry, this shop is currently unavailable",
+    "Fastly": "Fastly error: unknown domain",
+    "Zendesk": "Help Center Closed",
+    "Surge.sh": "project not found",
+    "Bitbucket": "Repository not found",
+    "Unbounce": "The requested URL was not found on this server",
+}
+
+def check_takeover(body: str):
+    hits = []
+    low = (body or "")[:8000]
+    for provider, sig in TAKEOVER_FINGERPRINTS.items():
+        if sig.lower() in low.lower():
+            hits.append({"provider": provider, "fingerprint": sig, "technique": "P... (subdomain takeover)"})
+    return hits
+
+# --- Exposed sensitive paths (bounded, safe GET probes)
+EXPOSED_PATHS = [
+    ("/.git/config", "[core]"),
+    ("/.git/HEAD", "ref:"),
+    ("/.env", "="),
+    ("/.env.local", "="),
+    ("/config.json", "{"),
+    ("/actuator", "_links"),
+    ("/actuator/env", "propertySources"),
+    ("/server-status", "Apache Status"),
+    ("/phpinfo.php", "phpinfo()"),
+    ("/.DS_Store", "Bud1"),
+    ("/backup.zip", "PK"),
+    ("/wp-config.php.bak", "DB_PASSWORD"),
+]
+
+def check_exposed_files(origin: str, delay: float):
+    findings = []
+    for path, sig in EXPOSED_PATHS:
+        time.sleep(delay)
+        resp = curl_request(origin + path, "GET")
+        code = int(resp.get("meta", {}).get("http_code") or 0)
+        body = resp.get("body_text", "")
+        if code == 200 and (sig.lower() in body.lower() or (sig == "PK" and body[:2] == "PK")):
+            findings.append({"url": origin + path, "status": code, "signature": sig,
+                             "size": resp.get("meta", {}).get("size_download"),
+                             "technique": "T27/P72", "command": resp.get("command")})
+    return findings
+
+# --- GraphQL introspection (single benign query)
+def check_graphql_introspection(url: str, delay: float):
+    time.sleep(delay)
+    query = '{"query":"query{__schema{queryType{name}}}"}'
+    with tempfile.TemporaryDirectory(prefix="ayed_gql_") as td:
+        bfile = Path(td) / "b.json"
+        cmd = ["curl", "-sS", "--max-time", str(DEFAULT_TIMEOUT), "-A", UA,
+               "-H", "Content-Type: application/json", "-X", "POST",
+               "-o", str(bfile), "-w", "%{http_code}", "--data", query, url]
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        body = bfile.read_text(errors="replace") if bfile.exists() else ""
+    enabled = "__schema" in body and "queryType" in body
+    return {
+        "url": url, "introspection_enabled": enabled,
+        "status": p.stdout.strip(), "technique": "T22/P31",
+        "command": " ".join(shlex.quote(x) for x in cmd),
+    }
+
+# --- 403/401 bypass surface probe (bounded, GET-only, non-destructive)
+BYPASS_VARIANTS = [
+    ("path", "/%2e/"), ("path", "/./"), ("path", "//"), ("path", "/..;/"),
+    ("header", "X-Original-URL"), ("header", "X-Rewrite-URL"),
+    ("header", "X-Forwarded-For"), ("header", "X-Forwarded-Host"),
+]
+
+def check_403_bypass(url: str, baseline_code: int, delay: float):
+    p = urlsplit(url)
+    attempts = []
+    for kind, token in BYPASS_VARIANTS:
+        time.sleep(delay)
+        if kind == "path":
+            test_url = urlunsplit((p.scheme, p.netloc, (p.path.rstrip("/") + token), p.query, ""))
+            resp = curl_request(test_url, "GET")
+        else:
+            test_url = url
+            hv = "127.0.0.1" if "For" in token or "Host" in token else p.path
+            resp = curl_request(url, "GET", headers=[f"{token}: {hv}"])
+        code = int(resp.get("meta", {}).get("http_code") or 0)
+        if code and code != baseline_code and code < 400:
+            attempts.append({"variant": f"{kind}:{token}", "status": code,
+                             "baseline": baseline_code, "technique": "T5",
+                             "command": resp.get("command")})
+    return attempts
+
+def run_active_checks(target: str, store, scans: list, delay: float, enabled: bool):
+    """Coordinate the non-destructive active detection phase."""
+    findings = {"jwt": [], "secrets": store.secret_findings, "takeover": [],
+                "exposed_files": [], "graphql_introspection": [], "bypass_403": []}
+    if not enabled:
+        return findings
+
+    origin = base_origin(target)
+    info("Probing for exposed sensitive files/paths")
+    findings["exposed_files"] = check_exposed_files(origin, delay)
+    ok(f"Exposed-file leads: {len(findings['exposed_files'])}")
+
+    # GraphQL introspection on discovered graphql endpoints
+    gql = [d["url"] for d in store.sorted() if "graphql" in d["tags"]][:5]
+    for g in gql:
+        info(f"GraphQL introspection check: {g}")
+        findings["graphql_introspection"].append(check_graphql_introspection(g, delay))
+
+    # Per-scan passive/lightweight checks
+    for s in scans:
+        base = s.get("tests", {}).get("get", {})
+        jwts = find_jwt_findings(base)
+        if jwts:
+            findings["jwt"].append({"url": s["url"], "tokens": jwts})
+            if "JWT_WEAKNESS" not in s.get("flags", []):
+                s.setdefault("flags", []).append("JWT_WEAKNESS")
+        tk = check_takeover(base.get("body_text", ""))
+        if tk:
+            findings["takeover"].append({"url": s["url"], "hits": tk})
+            s.setdefault("flags", []).append("TAKEOVER_FINGERPRINT")
+        code = int(base.get("meta", {}).get("http_code") or 0)
+        if code in (401, 403):
+            info(f"403/401 bypass surface check: {s['url']}")
+            b = check_403_bypass(s["url"], code, delay)
+            if b:
+                findings["bypass_403"].append({"url": s["url"], "attempts": b})
+                s.setdefault("flags", []).append("ACCESS_CONTROL_BYPASS_LEAD")
+    return findings
+
+# ---------------------------------------------------------------------------
 # Discovery store
 # ---------------------------------------------------------------------------
 
 class DiscoveryStore:
     def __init__(self, target: str, max_urls: int):
         self.target, self.max_urls, self.urls, self.forms = target, max_urls, {}, []
+        self.secret_findings = []
     def add(self, url, source: str):
         if not url: return False
         u = canonicalize(url)
@@ -778,7 +997,10 @@ def discover_js(target: str, store: DiscoveryStore, delay: float, max_js: int):
         time.sleep(delay)
         resp = curl_request(js, "GET", max_body=MAX_JS_BODY)
         if int(resp.get("meta", {}).get("http_code") or 0) >= 400: continue
-        store.add_many(extract_js_endpoints(js, resp.get("body_text", "")), "javascript")
+        body = resp.get("body_text", "")
+        store.add_many(extract_js_endpoints(js, body), "javascript")
+        for sec in scan_secrets(body, js):
+            store.secret_findings.append(sec)
 
 # ---------------------------------------------------------------------------
 # Findings + playbook
@@ -814,6 +1036,9 @@ PLAYBOOK_RULES = {
     "FORBIDDEN": "[T5] Try path/method/header variations (X-Original-URL, trailing dot, case, .json) that change the 403 — documentation only, with your own accounts.",
     "MISSING_SECURITY_HEADERS": "[T18/T19] Missing CSP/HSTS/etc. — assess cache poisoning and Host-header injection impact in context, not as a bare finding.",
     "WEAK_COOKIE_FLAGS": "[T9/T10] Session/auth cookies missing Secure/HttpOnly/SameSite; tie to session theft/CSRF or 2FA-step separation before reporting.",
+    "JWT_WEAKNESS": "[T6/P41/P42] JWT weaknesses detected — verify signature validation (alg confusion, weak secret, jku/kid) using a token you own; never send forged tokens against others.",
+    "TAKEOVER_FINGERPRINT": "[subdomain-takeover] Dangling-service fingerprint in the response; confirm the CNAME target is unclaimed, then claim it only if scope allows.",
+    "ACCESS_CONTROL_BYPASS_LEAD": "[T5] A path/header variant changed the 401/403 status — reproduce manually and confirm the exposed content is actually sensitive.",
 }
 TAG_PLAYBOOK = {
     "graphql": "[T22] Attempt introspection (if scope allows), then test aliasing/batching for rate-limit bypass and BOLA on node ids you own.",
@@ -989,6 +1214,25 @@ def write_report_md(out: Path, data: dict):
         md += ["", "## Forms discovered", ""]
         for f in data["forms"][:100]:
             md.append(f"- `{f['method']}` `{f['url']}`")
+    af = data.get("active_findings", {})
+    if af and any(af.values()):
+        md += ["", "## Active detection findings (non-destructive leads)", ""]
+        for ef in af.get("exposed_files", []):
+            md.append(f"- **Exposed file** `{ef['url']}` (HTTP {ef['status']}, sig `{ef['signature']}`) — {ef['technique']}")
+        for gi in af.get("graphql_introspection", []):
+            state = "ENABLED" if gi.get("introspection_enabled") else "disabled"
+            md.append(f"- **GraphQL introspection** `{gi['url']}` — **{state}** (HTTP {gi.get('status')}) — {gi['technique']}")
+        for jw in af.get("jwt", []):
+            for tok in jw["tokens"]:
+                md.append(f"- **JWT weakness** `{jw['url']}` `{tok['token_prefix']}` — {', '.join(tok['weaknesses'])}")
+        for sec in af.get("secrets", []):
+            md.append(f"- **Secret** `{sec['type']}` in `{sec['source']}` (sample `{sec['sample']}`) — {sec['technique']}")
+        for tk in af.get("takeover", []):
+            for hit in tk["hits"]:
+                md.append(f"- **Takeover fingerprint** `{tk['url']}` — {hit['provider']} (`{hit['fingerprint']}`)")
+        for bp in af.get("bypass_403", []):
+            for at in bp["attempts"]:
+                md.append(f"- **403/401 bypass lead** `{bp['url']}` via `{at['variant']}` -> HTTP {at['status']} (baseline {at['baseline']}) — {at['technique']}")
     md += ["", "## Active baseline results", ""]
     for s in data["scans"]:
         sm, flags = s.get("summary", {}), s.get("flags", [])
@@ -1241,6 +1485,8 @@ def main():
     ap.add_argument("--native-pages", type=int, default=25, help="Built-in HTML crawler page limit")
     ap.add_argument("--max-js", type=int, default=40, help="JS files inspected for endpoint strings")
     ap.add_argument("--no-archives", action="store_true", help="Skip gau and waybackurls")
+    ap.add_argument("--no-active-checks", action="store_true",
+                    help="Skip the non-destructive active detection phase (JWT/secrets/exposed files/GraphQL/403-bypass)")
     ap.add_argument("--out", help="Output directory (skips the interactive save-location prompt)")
     ap.add_argument("--formats", help=f"Comma-separated report formats ({', '.join(VALID_FORMATS)})")
     ap.add_argument("--operator", help="Operator / handle recorded in the report")
@@ -1316,13 +1562,23 @@ def main():
         except Exception as e:
             fail(f"{item['url']} -> {e}")
 
-    # PHASE 5 — Analysis / playbook
-    phase_banner(5, "ANALYSIS", "Prioritization and manual-test playbook")
+    # PHASE 5 — Active detection (non-destructive; detect, do not exploit)
+    phase_banner(5, "ACTIVE DETECTION", "JWT / secrets / exposed files / GraphQL / 403-bypass")
+    if args.no_active_checks:
+        warn("Active detection skipped (--no-active-checks)")
+        active_findings = run_active_checks(target, store, scans, args.delay, enabled=False)
+    else:
+        active_findings = run_active_checks(target, store, scans, args.delay, enabled=True)
+        summary = {k: len(v) for k, v in active_findings.items()}
+        ok("Active detection leads: " + ", ".join(f"{k}={n}" for k, n in summary.items() if n))
+
+    # PHASE 6 — Analysis / playbook
+    phase_banner(6, "ANALYSIS", "Prioritization and manual-test playbook")
     playbook = build_playbook(scans)
     ok(f"Playbook leads generated: {len(playbook)}")
 
-    # PHASE 6 — Reporting
-    phase_banner(6, "REPORTING", f"Writing outputs to {out}")
+    # PHASE 7 — Reporting
+    phase_banner(7, "REPORTING", f"Writing outputs to {out}")
     data = {
         "version": VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1334,6 +1590,7 @@ def main():
         "discovered": discovered,
         "scans": scans,
         "playbook": playbook,
+        "active_findings": active_findings,
         "tier_counts": counts,
     }
     paths = write_reports(out, data, formats)
