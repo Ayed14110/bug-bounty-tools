@@ -785,13 +785,38 @@ SECRET_PATTERNS = {
     "AWS Access Key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     "AWS Secret (heuristic)": re.compile(r"(?i)aws.{0,20}secret.{0,20}['\"][0-9a-zA-Z/+]{40}['\"]"),
     "Google API Key": re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
+    "Google OAuth Client": re.compile(r"\b[0-9]+-[0-9a-z]{32}\.apps\.googleusercontent\.com\b"),
     "Slack Token": re.compile(r"\bxox[baprs]-[0-9A-Za-z-]{10,}\b"),
+    "Slack Webhook": re.compile(r"https://hooks\.slack\.com/services/[A-Za-z0-9/_-]+"),
     "GitHub Token": re.compile(r"\bgh[pousr]_[0-9A-Za-z]{36,}\b"),
+    "GitLab Token": re.compile(r"\bglpat-[0-9A-Za-z_\-]{20,}\b"),
     "Stripe Key": re.compile(r"\b(?:sk|rk)_live_[0-9A-Za-z]{24,}\b"),
+    "Twilio SID": re.compile(r"\bAC[0-9a-fA-F]{32}\b"),
+    "SendGrid Key": re.compile(r"\bSG\.[0-9A-Za-z_\-]{22}\.[0-9A-Za-z_\-]{43}\b"),
+    "Mailgun Key": re.compile(r"\bkey-[0-9a-zA-Z]{32}\b"),
+    "Firebase Cloud Key": re.compile(r"\bAAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140,}\b"),
+    "NPM Token": re.compile(r"\bnpm_[0-9A-Za-z]{36}\b"),
     "Private Key Block": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----"),
     "Generic Bearer": re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}"),
+    "Generic Secret Assignment": re.compile(r"(?i)(?:api[_-]?key|secret|token|passwd|password)\s*[:=]\s*['\"][0-9a-zA-Z/+_\-]{16,}['\"]"),
     "JWT in source": JWT_RE,
 }
+
+# Regexes reused by passive detection checks (P81-P110)
+RFC1918_RE = re.compile(r"\b(?:10\.(?:\d{1,3})\.(?:\d{1,3})\.(?:\d{1,3})|172\.(?:1[6-9]|2\d|3[01])\.(?:\d{1,3})\.(?:\d{1,3})|192\.168\.(?:\d{1,3})\.(?:\d{1,3}))\b")
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+STACKTRACE_RE = re.compile(r"(?i)(traceback \(most recent call last\)|java\.lang\.[A-Za-z.]+Exception|stack trace:|at [a-z0-9_.]+\([A-Za-z0-9_]+\.java:\d+\)|on line \d+ in|fatal error:|System\.Web\.|Microsoft\.Data\.|ORA-\d{5}|SQLSTATE\[)")
+CMS_FINGERPRINTS = {
+    "WordPress": re.compile(r"(?i)/wp-content/|/wp-includes/|wp-json"),
+    "Drupal": re.compile(r"(?i)Drupal\.settings|/sites/default/files"),
+    "Joomla": re.compile(r"(?i)/media/jui/|com_content|Joomla!"),
+    "Laravel": re.compile(r"(?i)laravel_session|X-Powered-By: PHP.*Laravel"),
+    "Django": re.compile(r"(?i)csrftoken|__admin__|Django"),
+    "Rails": re.compile(r"(?i)csrf-param|authenticity_token|rails"),
+    "Next.js": re.compile(r"(?i)__NEXT_DATA__|/_next/"),
+}
+SECRET_URL_PARAMS = ("password", "passwd", "pwd", "token", "access_token", "api_key",
+                     "apikey", "secret", "auth", "session", "jwt", "key")
 
 def scan_secrets(text: str, source: str):
     out = []
@@ -896,10 +921,194 @@ def check_403_bypass(url: str, baseline_code: int, delay: float):
                              "command": resp.get("command")})
     return attempts
 
+# --- Passive per-response detection (local parse; NO extra requests) P81-P96
+def passive_scan_findings(scan: dict):
+    base = scan.get("tests", {}).get("get", {})
+    body = base.get("body_text", "")[:60000]
+    headers = base.get("headers", {})
+    ct = (first_header(base, "content-type") or "").lower()
+    sh = scan.get("security_headers", {})
+    out = []
+
+    def add(kind, detail, technique):
+        out.append({"type": kind, "detail": detail, "technique": technique})
+
+    # P81 verbose error / stack trace disclosure
+    m = STACKTRACE_RE.search(body)
+    if m:
+        add("verbose_error", f"stack-trace/error signature: {m.group(0)[:60]}", "P81")
+    # P82 technology / version disclosure
+    tech = []
+    for hn in ("server", "x-powered-by", "x-aspnet-version", "x-aspnetmvc-version", "x-generator"):
+        v = first_header(base, hn)
+        if v:
+            tech.append(f"{hn}: {v}")
+    if tech:
+        add("tech_disclosure", "; ".join(tech), "P82")
+    # P83 directory listing
+    if "index of /" in body.lower() or "<title>index of" in body.lower():
+        add("directory_listing", "Apache/nginx autoindex page", "P83")
+    # P84 internal IP disclosure
+    ips = set(RFC1918_RE.findall(body))
+    for vals in headers.values():
+        for v in vals:
+            ips.update(RFC1918_RE.findall(v))
+    if ips:
+        add("internal_ip", "RFC1918 addresses: " + ",".join(sorted(ips)[:5]), "P84")
+    # P85 email / PII exposure
+    emails = set(EMAIL_RE.findall(body))
+    if len(emails) >= 3:
+        add("pii_email", f"{len(emails)} email addresses in response", "P85")
+    # P86 clickjacking (missing frame protections)
+    csp = (first_header(base, "content-security-policy") or "").lower()
+    if not first_header(base, "x-frame-options") and "frame-ancestors" not in csp:
+        add("clickjacking", "no X-Frame-Options and no CSP frame-ancestors", "P86")
+    # P87 content-type sniffing risk
+    if "X-Content-Type-Options" in sh.get("missing", []):
+        add("content_sniffing", "missing X-Content-Type-Options: nosniff", "P87")
+    # P88 cacheable sensitive JSON (web cache deception indicator)
+    if "json" in ct:
+        cc = (first_header(base, "cache-control") or "").lower()
+        if not cc or ("no-store" not in cc and "no-cache" not in cc and "private" not in cc):
+            add("cacheable_json", f"JSON without no-store/private (cache-control: {cc or 'none'})", "P88")
+    # P89 missing rate-limit headers on auth/sensitive endpoint
+    if set(scan.get("tags", [])) & {"auth", "identity", "api"}:
+        if not any(first_header(base, h) for h in ("x-ratelimit-limit", "ratelimit-limit", "retry-after", "x-rate-limit-limit")):
+            add("no_ratelimit_headers", "no rate-limit headers advertised on sensitive endpoint", "P89")
+    # P90 secret/token in URL query string
+    low_url = scan["url"].lower()
+    hit = [p for p in SECRET_URL_PARAMS if re.search(rf"[?&]{re.escape(p)}=", low_url)]
+    if hit or JWT_RE.search(scan["url"]):
+        add("secret_in_url", "sensitive params in URL: " + (",".join(hit) or "jwt"), "P90")
+    # P91 mixed content on https page
+    if scan["url"].startswith("https://") and "html" in ct:
+        if re.search(r'(?:src|href|action)\s*=\s*["\']http://', body):
+            add("mixed_content", "http:// resource referenced from https page", "P91")
+    # P92 CMS / framework fingerprint
+    hay = body + " " + " ".join(f"{k}:{','.join(v)}" for k, v in headers.items())
+    for name, pat in CMS_FINGERPRINTS.items():
+        if pat.search(hay):
+            add("cms_fingerprint", name, "P92")
+            break
+    # P93 weak HSTS (present but no includeSubDomains/preload)
+    hsts = first_header(base, "strict-transport-security")
+    if hsts and ("includesubdomains" not in hsts.lower()):
+        add("weak_hsts", f"HSTS without includeSubDomains: {hsts[:60]}", "P93")
+    # P94 SameSite=None cookie without Secure / missing SameSite
+    for ck in scan.get("cookies", []):
+        if not ck.get("samesite"):
+            add("cookie_samesite", f"cookie '{ck['name']}' missing SameSite", "P94")
+    # P95 GraphQL/verbose debug keywords
+    if re.search(r"(?i)\b(debug\s*=\s*true|APP_DEBUG|whoops|werkzeug|phpinfo\(\))", body):
+        add("debug_mode", "debug/verbose framework signature in body", "P95")
+    # P96 open CORS on OPTIONS advertising credentials
+    opt = scan.get("tests", {}).get("options", {})
+    if (first_header(opt, "access-control-allow-credentials") or "").lower() == "true" and \
+       first_header(opt, "access-control-allow-origin") == "*":
+        add("cors_wildcard_creds", "OPTIONS advertises ACAO:* with credentials", "P96")
+    return out
+
+# --- Host-level active detection (bounded extra requests) P97-P110
+def host_level_checks(target: str, store, delay: float):
+    origin = base_origin(target)
+    host = host_key(target)
+    findings = {}
+
+    # P97 security.txt
+    time.sleep(delay)
+    r = curl_request(origin + "/.well-known/security.txt", "GET")
+    if int(r.get("meta", {}).get("http_code") or 0) == 200 and "contact" in r.get("body_text", "").lower():
+        findings["security_txt"] = {"url": origin + "/.well-known/security.txt", "technique": "P97"}
+
+    # P98 OIDC discovery
+    time.sleep(delay)
+    r = curl_request(origin + "/.well-known/openid-configuration", "GET")
+    if int(r.get("meta", {}).get("http_code") or 0) == 200 and "authorization_endpoint" in r.get("body_text", ""):
+        try:
+            cfg = json.loads(r.get("body_text", "") or "{}")
+            findings["oidc"] = {"url": origin + "/.well-known/openid-configuration",
+                                "authorization_endpoint": cfg.get("authorization_endpoint"),
+                                "token_endpoint": cfg.get("token_endpoint"), "technique": "P98"}
+        except Exception:
+            pass
+
+    # P99 CORS null-origin acceptance
+    time.sleep(delay)
+    r = curl_request(target, "GET", headers=["Origin: null"])
+    if first_header(r, "access-control-allow-origin") == "null":
+        findings["cors_null"] = {"url": target, "detail": "ACAO reflects 'null' origin", "technique": "P99"}
+
+    # P100 CORS naive matching (subdomain / suffix trust)
+    for probe in (f"https://ayedbbp.{host}", f"https://not{host}"):
+        time.sleep(delay)
+        r = curl_request(target, "GET", headers=[f"Origin: {probe}"])
+        if first_header(r, "access-control-allow-origin") == probe:
+            findings["cors_naive_match"] = {"url": target, "reflected_origin": probe, "technique": "P100"}
+            break
+
+    # P101 TRACE method (XST)
+    time.sleep(delay)
+    r = curl_request(target, "TRACE")
+    if int(r.get("meta", {}).get("http_code") or 0) == 200 and "trace" in (r.get("body_text", "")[:200].lower()):
+        findings["trace_method"] = {"url": target, "technique": "P101"}
+
+    # P102 Host header reflection
+    time.sleep(delay)
+    marker = "ayed-hbp-" + uuid.uuid4().hex[:8] + ".invalid"
+    r = curl_request(target, "GET", headers=[f"X-Forwarded-Host: {marker}"])
+    loc = first_header(r, "location") or ""
+    if marker in r.get("body_text", "")[:60000] or marker in loc:
+        findings["host_header_reflection"] = {"url": target, "marker": marker, "technique": "P102"}
+
+    # P103 WordPress REST user enumeration
+    time.sleep(delay)
+    r = curl_request(origin + "/wp-json/wp/v2/users", "GET")
+    if int(r.get("meta", {}).get("http_code") or 0) == 200 and '"slug"' in r.get("body_text", ""):
+        findings["wp_user_enum"] = {"url": origin + "/wp-json/wp/v2/users", "technique": "P103"}
+
+    # P104 common admin/debug panels present
+    panels = []
+    for path in ("/admin/", "/administrator/", "/manage/", "/dashboard/", "/debug/", "/status", "/metrics"):
+        time.sleep(delay)
+        r = curl_request(origin + path, "GET")
+        code = int(r.get("meta", {}).get("http_code") or 0)
+        if code in (200, 401, 403):
+            panels.append({"path": path, "status": code})
+    if panels:
+        findings["admin_panels"] = {"panels": panels, "technique": "P104"}
+
+    return findings
+
+# --- JS source-map exposure (bounded) P105
+def check_source_maps(store, delay: float, limit: int = 10):
+    js_urls = [u for u in store.urls if is_js(u)][:limit]
+    out = []
+    for js in js_urls:
+        time.sleep(delay)
+        r = curl_request(js + ".map", "GET", max_body=MAX_JS_BODY)
+        if int(r.get("meta", {}).get("http_code") or 0) == 200 and '"mappings"' in r.get("body_text", "")[:5000]:
+            out.append({"url": js + ".map", "technique": "P105"})
+    return out
+
+# --- Backup / temp file exposure for discovered paths (bounded) P106
+def check_backup_files(store, delay: float, limit: int = 8):
+    candidates = [u for u in store.sorted() if not is_static(u["url"]) and not is_js(u["url"])
+                  and urlsplit(u["url"]).path not in ("", "/")][:limit]
+    out = []
+    for item in candidates:
+        for suffix in (".bak", "~"):
+            time.sleep(delay)
+            r = curl_request(item["url"] + suffix, "GET")
+            if int(r.get("meta", {}).get("http_code") or 0) == 200 and int(r.get("meta", {}).get("size_download") or 0) > 0:
+                out.append({"url": item["url"] + suffix, "technique": "P106"})
+                break
+    return out
+
 def run_active_checks(target: str, store, scans: list, delay: float, enabled: bool):
     """Coordinate the non-destructive active detection phase."""
     findings = {"jwt": [], "secrets": store.secret_findings, "takeover": [],
-                "exposed_files": [], "graphql_introspection": [], "bypass_403": []}
+                "exposed_files": [], "graphql_introspection": [], "bypass_403": [],
+                "passive": [], "host_checks": {}, "source_maps": [], "backup_files": []}
     if not enabled:
         return findings
 
@@ -908,13 +1117,22 @@ def run_active_checks(target: str, store, scans: list, delay: float, enabled: bo
     findings["exposed_files"] = check_exposed_files(origin, delay)
     ok(f"Exposed-file leads: {len(findings['exposed_files'])}")
 
+    # Host-level detection (security.txt, OIDC, CORS null/naive, TRACE, host-header, panels)
+    info("Host-level checks (CORS/TRACE/host-header/OIDC/panels)")
+    findings["host_checks"] = host_level_checks(target, store, delay)
+
+    # JS source maps + backup/temp files (bounded)
+    info("Checking JS source maps and backup/temp files")
+    findings["source_maps"] = check_source_maps(store, delay)
+    findings["backup_files"] = check_backup_files(store, delay)
+
     # GraphQL introspection on discovered graphql endpoints
     gql = [d["url"] for d in store.sorted() if "graphql" in d["tags"]][:5]
     for g in gql:
         info(f"GraphQL introspection check: {g}")
         findings["graphql_introspection"].append(check_graphql_introspection(g, delay))
 
-    # Per-scan passive/lightweight checks
+    # Per-scan checks: JWT, takeover, 403 bypass, and passive local-parse detections
     for s in scans:
         base = s.get("tests", {}).get("get", {})
         jwts = find_jwt_findings(base)
@@ -933,6 +1151,11 @@ def run_active_checks(target: str, store, scans: list, delay: float, enabled: bo
             if b:
                 findings["bypass_403"].append({"url": s["url"], "attempts": b})
                 s.setdefault("flags", []).append("ACCESS_CONTROL_BYPASS_LEAD")
+        pf = passive_scan_findings(s)
+        if pf:
+            findings["passive"].append({"url": s["url"], "items": pf})
+            s["passive"] = pf
+            s.setdefault("flags", []).append("PASSIVE_DETECTIONS")
     return findings
 
 # ---------------------------------------------------------------------------
@@ -1039,6 +1262,7 @@ PLAYBOOK_RULES = {
     "JWT_WEAKNESS": "[T6/P41/P42] JWT weaknesses detected — verify signature validation (alg confusion, weak secret, jku/kid) using a token you own; never send forged tokens against others.",
     "TAKEOVER_FINGERPRINT": "[subdomain-takeover] Dangling-service fingerprint in the response; confirm the CNAME target is unclaimed, then claim it only if scope allows.",
     "ACCESS_CONTROL_BYPASS_LEAD": "[T5] A path/header variant changed the 401/403 status — reproduce manually and confirm the exposed content is actually sensitive.",
+    "PASSIVE_DETECTIONS": "[P81-P96] Passive signals detected (see per-endpoint list): triage each — verbose errors, tech/version disclosure, cacheable JSON, weak headers, secrets/PII in URL — and tie to concrete impact before reporting.",
 }
 TAG_PLAYBOOK = {
     "graphql": "[T22] Attempt introspection (if scope allows), then test aliasing/batching for rate-limit bypass and BOLA on node ids you own.",
@@ -1233,6 +1457,19 @@ def write_report_md(out: Path, data: dict):
         for bp in af.get("bypass_403", []):
             for at in bp["attempts"]:
                 md.append(f"- **403/401 bypass lead** `{bp['url']}` via `{at['variant']}` -> HTTP {at['status']} (baseline {at['baseline']}) — {at['technique']}")
+        for sm in af.get("source_maps", []):
+            md.append(f"- **Source map exposed** `{sm['url']}` — {sm['technique']}")
+        for bf in af.get("backup_files", []):
+            md.append(f"- **Backup/temp file** `{bf['url']}` — {bf['technique']}")
+        hc = af.get("host_checks", {})
+        for key, val in hc.items():
+            md.append(f"- **Host check `{key}`** — `{json.dumps(val, ensure_ascii=False)[:220]}`")
+        pv = af.get("passive", [])
+        if pv:
+            md += ["", "### Passive detections (per endpoint)", ""]
+            for entry in pv:
+                labels = ", ".join(f"{it['type']}[{it['technique']}]" for it in entry["items"])
+                md.append(f"- `{entry['url']}` — {labels}")
     md += ["", "## Active baseline results", ""]
     for s in data["scans"]:
         sm, flags = s.get("summary", {}), s.get("flags", [])
@@ -1463,6 +1700,59 @@ def engagement_setup(target: str, args):
     return out, formats, engagement
 
 # ---------------------------------------------------------------------------
+# Interactive verification mode (--verify)
+# ---------------------------------------------------------------------------
+
+def run_verify(data: dict, delay: float):
+    """Walk CRITICAL/HIGH leads and let the operator confirm each safe re-check.
+
+    Only ever re-issues the non-destructive baseline GET, and only after an
+    explicit 'y'. Prints the ready curl command + playbook steps for manual work.
+    """
+    if not interactive_available():
+        warn("--verify needs an interactive terminal; skipping.")
+        return
+    scans = data.get("scans", [])
+    leads = [s for s in scans if s.get("tier") in ("CRITICAL", "HIGH") or s.get("flags")]
+    leads.sort(key=lambda x: (TIER_ORDER.get(x.get("tier", "INFO"), 9), -x.get("score", 0)))
+    playbook_by_url = {e["url"]: e for e in data.get("playbook", [])}
+
+    phase_banner("", "VERIFY", "Step through prioritized leads (safe GET only, on confirm)")
+    if not leads:
+        warn("No prioritized leads to verify.")
+        return
+    print(c(f"  {len(leads)} lead(s). For each: [y]=re-run safe GET, [s]=skip, [q]=quit.\n", "dim"))
+
+    for i, s in enumerate(leads, 1):
+        print(c(f"\n[{i}/{len(leads)}] [{s.get('tier')}] {s['url']}", "bold"))
+        print(f"    flags   : {c(', '.join(s.get('flags', [])) or 'none', 'yellow')}")
+        print(f"    http    : {s.get('summary', {}).get('http')}  ·  {s.get('summary', {}).get('content_type')}")
+        pf = s.get("passive", [])
+        if pf:
+            print(f"    passive : {', '.join(it['type'] for it in pf)}")
+        entry = playbook_by_url.get(s["url"])
+        if entry:
+            print(c("    manual verification:", "cyan"))
+            for step in entry["steps"]:
+                print(f"      - {step}")
+        get_cmd = s.get("tests", {}).get("get", {}).get("command")
+        if get_cmd:
+            print(c("    curl:", "cyan"))
+            print(f"      {get_cmd}")
+        try:
+            choice = input(c("    re-run safe GET now? [y/s/q]: ", "yellow")).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print(); return
+        if choice == "q":
+            break
+        if choice == "y":
+            time.sleep(delay)
+            r = curl_request(s["url"], "GET")
+            print(f"      -> HTTP {r.get('meta', {}).get('http_code')} · "
+                  f"{first_header(r, 'content-type')} · {r.get('meta', {}).get('size_download')} bytes")
+    ok("Verification walkthrough complete.")
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1492,6 +1782,8 @@ def main():
     ap.add_argument("--operator", help="Operator / handle recorded in the report")
     ap.add_argument("--engagement", help="Engagement name recorded in the report")
     ap.add_argument("--yes", action="store_true", help="Non-interactive: assume authorization and defaults")
+    ap.add_argument("--verify", action="store_true",
+                    help="After reporting, interactively step through CRITICAL/HIGH leads (safe GET only, on confirm)")
     args = ap.parse_args()
 
     if args.delay < MIN_DELAY: die(f"--delay must be >= {MIN_DELAY}s")
@@ -1606,6 +1898,10 @@ def main():
     for key, label in label_map.items():
         if key in paths:
             print(f"  {label:<16}: {paths[key]}")
+
+    # Optional interactive verification walkthrough
+    if args.verify:
+        run_verify(data, args.delay)
 
 if __name__ == "__main__":
     main()
